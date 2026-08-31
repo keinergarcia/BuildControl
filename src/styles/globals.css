@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-background: var(--bc-bg-primary);
+  --color-foreground: var(--bc-text-primary);
+  --color-card: var(--bc-bg-card);
+  --color-card-foreground: var(--bc-text-primary);
+  --color-popover: var(--bc-bg-card);
+  --color-popover-foreground: var(--bc-text-primary);
+  --color-primary: var(--bc-accent-primary);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--bc-bg-tertiary);
+  --color-secondary-foreground: var(--bc-text-primary);
+  --color-muted: var(--bc-bg-secondary);
+  --color-muted-foreground: var(--bc-text-muted);
+  --color-accent: var(--bc-bg-tertiary);
+  --color-accent-foreground: var(--bc-text-primary);
+  --color-destructive: var(--bc-accent-danger);
+  --color-destructive-foreground: #ffffff;
+  --color-border: var(--bc-border);
+  --color-input: var(--bc-border);
+  --color-ring: var(--bc-accent-primary);
+  --color-success: var(--bc-accent-success);
+  --color-warning: var(--bc-accent-warning);
+  --color-info: var(--bc-accent-info);
+
+  --color-sidebar: var(--bc-bg-sidebar);
+  --color-sidebar-foreground: var(--bc-text-primary);
+  --color-sidebar-accent: var(--bc-bg-tertiary);
+  --color-sidebar-border: var(--bc-border);
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
+
+:root {
+  --bc-bg-primary: #f8fafc;
+  --bc-bg-secondary: #ffffff;
+  --bc-bg-tertiary: #f1f5f9;
+  --bc-bg-sidebar: #ffffff;
+  --bc-bg-card: #ffffff;
+  --bc-border: #e2e8f0;
+  --bc-border-hover: #cbd5e1;
+  --bc-text-primary: #0f172a;
+  --bc-text-secondary: #475569;
+  --bc-text-muted: #94a3b8;
+  --bc-accent-primary: #3b82f6;
+  --bc-accent-success: #10b981;
+  --bc-accent-warning: #f59e0b;
+  --bc-accent-danger: #ef4444;
+  --bc-accent-info: #06b6d4;
+  --bc-gradient-primary: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  --bc-gradient-success: linear-gradient(135deg, #10b981, #06b6d4);
+  --bc-gradient-card: linear-gradient(145deg, #ffffff, #f8fafc);
+  --bc-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --bc-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --bc-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.dark {
+  --bc-bg-primary: #0a0e17;
+  --bc-bg-secondary: #111827;
+  --bc-bg-tertiary: #1a2332;
+  --bc-bg-sidebar: #0d1320;
+  --bc-bg-card: #151d2b;
+  --bc-border: #1e2d3d;
+  --bc-border-hover: #2a3f54;
+  --bc-text-primary: #f1f5f9;
+  --bc-text-secondary: #94a3b8;
+  --bc-text-muted: #64748b;
+  --bc-accent-primary: #3b82f6;
+  --bc-accent-success: #10b981;
+  --bc-accent-warning: #f59e0b;
+  --bc-accent-danger: #ef4444;
+  --bc-accent-info: #06b6d4;
+  --bc-gradient-primary: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  --bc-gradient-success: linear-gradient(135deg, #10b981, #06b6d4);
+  --bc-gradient-card: linear-gradient(145deg, #151d2b, #1a2332);
+  --bc-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --bc-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --bc-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+* {
+  border-color: var(--bc-border);
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bc-bg-primary);
+  color: var(--bc-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .text-gradient-primary {
+    background: var(--bc-gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-success {
+    background: var(--bc-gradient-success);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glow-blue {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  }
+
+  .glow-green {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+  }
+
+  .glow-red {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+  }
+
+  .glow-yellow {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
