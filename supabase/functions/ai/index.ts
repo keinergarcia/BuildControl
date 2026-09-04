@@ -7,15 +7,29 @@
 //   supabase secrets set AI_PROVIDER=openai|anthropic|gemini
 //   supabase secrets set AI_API_KEY=<clave>
 //   supabase secrets set AI_MODEL=<modelo>        (opcional, tiene defaults)
+//   supabase secrets set AI_ALLOWED_ORIGIN=https://tu-app.vercel.app
 //
-// Deploy:
-//   supabase functions deploy ai --no-verify-jwt
+// Deploy (AHORA REQUIERE JWT):
+//   supabase functions deploy ai
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const ALLOWED_ORIGIN = Deno.env.get("AI_ALLOWED_ORIGIN") ?? "";
+
+// Restringe el origen permitido para lectura entre dominios. Si AI_ALLOWED_ORIGIN
+// está configurado, se usa SIEMPRE ese valor (el navegador bloqueará cualquier otro
+// origen). Sin configurar, se permite "*" solo como comodín para desarrollo; la
+// verificación JWT sigue protegiendo el endpoint incluso con CORS abierto.
+function buildCorsHeaders(): Record<string, string> {
+  const allowed = ALLOWED_ORIGIN || "*";
+  return {
+    "Access-Control-Allow-Origin": allowed,
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
 const SYSTEM_PROMPT =
   "Eres BUILDControl, el asistente financiero de un contratista de construcción. " +
@@ -29,6 +43,23 @@ type Task = "chat" | "ocr" | "predict";
 interface ChatMessage {
   role: "system" | "user" | "assistant";
   content: string;
+}
+
+// Simple in-memory rate limiter per user (resets on cold start)
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_MAX = 20;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
 }
 
 function buildMessages(task: Task, payload: Record<string, unknown>): ChatMessage[] {
@@ -90,7 +121,7 @@ async function callOpenAI(
       temperature: 0.2,
     }),
   });
-  if (!res.ok) throw new Error(`openai ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`openai_error_${res.status}`);
   const data = await res.json();
   return data.choices?.[0]?.message?.content ?? "";
 }
@@ -126,7 +157,7 @@ async function callAnthropic(
       messages: [{ role: "user", content: userParts }],
     }),
   });
-  if (!res.ok) throw new Error(`anthropic ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`anthropic_error_${res.status}`);
   const data = await res.json();
   return data.content?.map((c: { text?: string }) => c.text ?? "").join("") ?? "";
 }
@@ -144,7 +175,6 @@ async function callGemini(
   }
   const parts: Array<{ text: string } | { inlineData: unknown }> = [];
   if (text) parts.push({ text });
-  // gemini ignora el rol system en este endpoint simple; va como texto.
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -159,7 +189,7 @@ async function callGemini(
       }),
     }
   );
-  if (!res.ok) throw new Error(`gemini ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`gemini_error_${res.status}`);
   const data = await res.json();
   return data.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("") ?? "";
 }
@@ -183,8 +213,41 @@ async function route(
 }
 
 export default async function handler(req: Request) {
+  const corsHeaders = buildCorsHeaders();
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  // JWT verification via Supabase auth
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) {
+    return new Response(
+      JSON.stringify({ error: "missing_authorization" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return new Response(
+      JSON.stringify({ error: "unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Rate limiting per user
+  if (!checkRateLimit(user.id)) {
+    return new Response(
+      JSON.stringify({ error: "rate_limit_exceeded" }),
+      { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   const provider = Deno.env.get("AI_PROVIDER") ?? "";
@@ -217,9 +280,9 @@ export default async function handler(req: Request) {
       { provider, task, served: true, result },
       { headers: corsHeaders }
     );
-  } catch (err) {
+  } catch {
     return Response.json(
-      { served: false, reason: String(err) },
+      { served: false, reason: "ai_request_failed" },
       { status: 200, headers: corsHeaders }
     );
   }

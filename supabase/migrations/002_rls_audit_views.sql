@@ -13,7 +13,8 @@
 -- =============================================
 -- 1) budget_categories: catálogo GLOBAL de solo lectura
 -- =============================================
--- RLS está habilitado pero no había política -> tabla bloqueada incluso para SELECT.
+-- RLS se habilita en la migración 007; aquí solo se deja lista la política
+-- SELECT global para cuando RLS esté activo.
 -- Es un catálogo compartido por todos los usuarios (materiales, mano de obra...),
 -- las líneas de presupuesto (project_budgets.category_id) hacen referencia a él.
 CREATE POLICY "Catalog is readable by all users"
