@@ -1,5 +1,5 @@
 import { jsPDF } from "jspdf";
-import { formatCOP, formatCOPShort } from "@/lib/money";
+import { formatCOP } from "@/lib/money";
 import { formatDate } from "@/utils/date";
 import type { ProjectReportRow } from "@/features/reports/api/reports";
 
@@ -164,11 +164,11 @@ export function exportReportPdf(
   for (const r of rows) {
     const s = r.summary;
     const kpis: Array<[string, string]> = [
-      ["Contratado", formatCOPShort(s.contractValue)],
-      ["Recibido", formatCOPShort(s.receivedAmount)],
-      ["Pendiente", formatCOPShort(s.pendingAmount)],
-      ["Costos", formatCOPShort(s.totalCosts)],
-      ["Utilidad", formatCOPShort(s.profit)],
+      ["Contratado", formatCOP(s.contractValue)],
+      ["Recibido", formatCOP(s.receivedAmount)],
+      ["Pendiente", formatCOP(s.pendingAmount)],
+      ["Costos", formatCOP(s.totalCosts)],
+      ["Utilidad", formatCOP(s.profit)],
     ];
     const blockH = 62;
     if (y + blockH > pageHeight - margin) {

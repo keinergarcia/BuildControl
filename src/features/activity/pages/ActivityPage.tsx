@@ -7,6 +7,7 @@ import { formatCOP } from "@/lib/money";
 import { formatDate, formatTime } from "@/utils/date";
 import { useActivity } from "@/features/activity/api/useActivity";
 import { useProjects } from "@/features/projects/api/useProjects";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 import type { ActivityItem, ActivityKind } from "@/features/activity/api/activity";
 import {
   Receipt,
@@ -41,12 +42,13 @@ const FILTERS: Array<{ key: ActivityKind | "all"; label: string }> = [
 
 export default function ActivityPage() {
   const { data: projects = [], isLoading: loadingProjects, isError, refetch } = useProjects({});
+  const { user } = useAuth();
   const [filter, setFilter] = useState<ActivityKind | "all">("all");
 
   const projectIds = useMemo(() => projects.map((p) => p.id), [projects]);
   const projectName = useMemo(() => new Map(projects.map((p) => [p.id, p.name])), [projects]);
 
-  const { data: items = [], isLoading, isFetching } = useActivity(projectIds);
+  const { data: items = [], isLoading, isFetching } = useActivity(projectIds, user?.id);
 
   const filtered = useMemo(
     () => (filter === "all" ? items : items.filter((i) => i.kind === filter)),
@@ -72,8 +74,14 @@ export default function ActivityPage() {
       .map(([date, list]) => ({ date, list }));
   }, [filtered]);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  // Fecha de referencia estable por montaje (evita Date.now() durante el render).
+  const [dayLabels] = useState(() => {
+    const now = Date.now();
+    const today = new Date(now).toISOString().slice(0, 10);
+    const yesterday = new Date(now - 86_400_000).toISOString().slice(0, 10);
+    return { today, yesterday };
+  });
+  const { today, yesterday } = dayLabels;
 
   const groupLabel = (date: string) => {
     if (date === today) return "Hoy";

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { formatCOP, formatCOPShort } from "@/lib/money";
+import { formatCOP } from "@/lib/money";
 import { useDashboard } from "@/features/dashboard/api/useDashboard";
 import {
   answerQuestion,
@@ -46,7 +46,7 @@ const toneDot: Record<AssistantTone, string> = {
 };
 
 export default function AssistantPage() {
-  const { projects, projectRows, totals, alerts, isLoading } = useDashboard();
+  const { projects, projectRows, totals, alerts, isLoading } = useDashboard({ withActivity: false });
   const [messages, setMessages] = useState<ChatMsg[]>([
     {
       id: 0,
@@ -250,10 +250,10 @@ export default function AssistantPage() {
               </CardHeader>
               <CardContent className="space-y-1.5 text-sm">
                 <Row label="Obras en curso" value={String(totals.activeProjects)} />
-                <Row label="Contratado" value={formatCOPShort(totals.totalContractValue)} />
-                <Row label="Costos" value={formatCOPShort(totals.totalCosts)} />
-                <Row label="En caja" value={formatCOPShort(totals.availableCash)} />
-                <Row label="Utilidad" value={formatCOPShort(totals.totalProfit)} />
+                <Row label="Contratado" value={formatCOP(totals.totalContractValue)} />
+                <Row label="Costos" value={formatCOP(totals.totalCosts)} />
+                <Row label="En caja" value={formatCOP(totals.availableCash)} />
+                <Row label="Utilidad" value={formatCOP(totals.totalProfit)} />
               </CardContent>
             </Card>
 
@@ -273,7 +273,7 @@ export default function AssistantPage() {
                       <div className="flex justify-between mb-1">
                         <span className="font-medium">{o.name}</span>
                         <span className="text-muted-foreground">
-                          {o.percent}% · +{formatCOPShort(o.over)}
+                          {o.percent}% · +{formatCOP(o.over)}
                         </span>
                       </div>
                       <Progress value={Math.min(100, o.percent)} className="h-1.5 bg-warning/20 [&>div]:bg-warning" />
@@ -318,12 +318,12 @@ export default function AssistantPage() {
                       <div className="flex justify-between mb-1">
                         <span className="font-medium truncate">{u.name}</span>
                         <span className="text-muted-foreground tabular-nums shrink-0">
-                          {formatCOPShort(u.expected)}
+                          {formatCOP(u.expected)}
                         </span>
                       </div>
                       <Progress value={u.expected > 0 ? Math.max(5, Math.min(100, (u.current / u.expected) * 100)) : 0} className="h-1.5" />
                       <p className="text-xs text-muted-foreground mt-1">
-                        Hoy: <span className="tabular-nums">{formatCOPShort(u.current)}</span>
+                        Hoy: <span className="tabular-nums">{formatCOP(u.current)}</span>
                       </p>
                     </div>
                   ))

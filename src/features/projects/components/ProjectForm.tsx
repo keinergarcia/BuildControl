@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { STATUS_OPTIONS } from "@/features/projects/constants";
+import { STATUS_OPTIONS, STATUS_TRANSITIONS } from "@/features/projects/constants";
 import {
   uploadProjectCover,
   deleteProjectCover,
@@ -60,7 +60,7 @@ interface ProjectFormProps {
   description: string;
 }
 
-export function buildInput(data: ProjectFormData) {
+function buildInput(data: ProjectFormData) {
   return {
     name: data.name,
     description: toNull(data.description),
@@ -104,6 +104,8 @@ export function ProjectForm({
   const [uploadingCover, setUploadingCover] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // oxlint-disable react/set-state-in-effect -- Sincroniza el formulario
+  // (react-hook-form + portada) con el proyecto editado o la apertura del modal.
   useEffect(() => {
     reset(toFormValue(project));
     setCoverFile(null);
@@ -112,6 +114,8 @@ export function ProjectForm({
     setUploadingCover(false);
   }, [project, open, reset]);
 
+  // Deriva la preview de la portada desde el archivo; debe liberar la object URL
+  // en el cleanup del efecto.
   useEffect(() => {
     if (!coverFile) {
       setCoverPreview(null);
@@ -121,6 +125,7 @@ export function ProjectForm({
     setCoverPreview(previewUrl);
     return () => URL.revokeObjectURL(previewUrl);
   }, [coverFile]);
+  // oxlint-enable react/set-state-in-effect
 
   const showCoverPreview = coverRemoved
     ? null
@@ -308,12 +313,14 @@ export function ProjectForm({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Estado</Label>
-              <Controller
-                control={control}
-                name="status"
-                render={({ field }) => (
+          <div className="space-y-2">
+            <Label>Estado</Label>
+            <Controller
+              control={control}
+              name="status"
+              render={({ field }) => {
+                const currentStatus = project?.status;
+                return (
                   <Select
                     value={field.value}
                     onValueChange={field.onChange}
@@ -322,16 +329,23 @@ export function ProjectForm({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {STATUS_OPTIONS.map((s) => (
-                        <SelectItem key={s.value} value={s.value}>
-                          {s.label}
-                        </SelectItem>
-                      ))}
+                      {STATUS_OPTIONS.map((s) => {
+                        const isAllowed =
+                          !currentStatus || s.value === currentStatus ||
+                          (STATUS_TRANSITIONS[currentStatus]?.includes(s.value) ?? false);
+                        return (
+                          <SelectItem key={s.value} value={s.value} disabled={!isAllowed}>
+                            {s.label}
+                            {!isAllowed && s.value !== currentStatus && " (no disponible)"}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
-                )}
-              />
-            </div>
+                );
+              }}
+            />
+          </div>
 
             <div className="space-y-2">
               <Label>Fecha de inicio</Label>

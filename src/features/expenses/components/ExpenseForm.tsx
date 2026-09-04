@@ -7,6 +7,7 @@ import { expenseSchema } from "@/utils/validators";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MoneyInput } from "@/components/shared/MoneyInput";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -77,7 +78,7 @@ function toFormValue(
   };
 }
 
-export function buildExpenseInput(data: ExpenseFormData): ExpenseInput {
+function buildExpenseInput(data: ExpenseFormData): ExpenseInput {
   return {
     project_id: data.project_id,
     description: data.description,
@@ -178,13 +179,17 @@ export function ExpenseForm({
 
           <div className="space-y-2">
             <Label htmlFor="amount">Valor *</Label>
-            <Input
-              id="amount"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              {...register("amount", { valueAsNumber: true })}
-              aria-invalid={!!errors.amount}
+            <Controller
+              control={control}
+              name="amount"
+              render={({ field }) => (
+                <MoneyInput
+                  id="amount"
+                  value={field.value}
+                  onChange={field.onChange}
+                  ariaInvalid={!!errors.amount}
+                />
+              )}
             />
             {errors.amount && (
               <p className="text-sm text-destructive">{errors.amount.message}</p>
@@ -200,7 +205,7 @@ export function ExpenseForm({
                 render={({ field }) => (
                   <Select
                     value={field.value || undefined}
-                    onValueChange={(v) => field.onChange(v || "")}
+                    onValueChange={(v) => field.onChange(v === "_none" ? "" : v)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Rubro del presupuesto" />
@@ -226,11 +231,11 @@ export function ExpenseForm({
                   render={({ field }) => (
                     <Select
                       value={field.value || undefined}
-                      onValueChange={(v) => field.onChange(v || "")}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Categoría personalizada" />
-                      </SelectTrigger>
+onValueChange={(v) => field.onChange(v === "_none" ? "" : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Categoría personalizada" />
+                    </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="_none">Sin categoría</SelectItem>
                         {expenseCategories.map((c) => (
@@ -255,7 +260,7 @@ export function ExpenseForm({
                 render={({ field }) => (
                   <Select
                     value={field.value || undefined}
-                    onValueChange={(v) => field.onChange(v || "")}
+                    onValueChange={(v) => field.onChange(v === "_none" ? "" : v)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar proveedor" />

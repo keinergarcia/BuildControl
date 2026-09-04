@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MoneyInput } from "@/components/shared/MoneyInput";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -28,6 +29,8 @@ import {
   useExpenseCategories,
 } from "@/features/expenses/api/useExpenses";
 import { runOcr, imageToDataUrl } from "@/features/expenses/api/ocr";
+import { updateExpense } from "@/features/expenses/api/expenses";
+import { PAYMENT_METHOD_LABELS, type PaymentMethod } from "@/types";
 import { todayStr } from "@/utils/date";
 import { Loader2, Camera, Upload, ScanLine, CheckCircle2, AlertTriangle } from "lucide-react";
 
@@ -35,6 +38,10 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+const PAYMENT_OPTIONS = (Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map(
+  (p) => ({ value: p, label: PAYMENT_METHOD_LABELS[p] })
+);
 
 export function ExpenseOcrDialog({ open, onOpenChange }: Props) {
   const { user } = useAuth();
@@ -52,7 +59,7 @@ export function ExpenseOcrDialog({ open, onOpenChange }: Props) {
   const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
 
   const [projectId, setProjectId] = useState("");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState<number | null>(null);
   const [date, setDate] = useState(todayStr());
   const [supplierId, setSupplierId] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -67,7 +74,7 @@ export function ExpenseOcrDialog({ open, onOpenChange }: Props) {
     setHasOcr(false);
     setAiAvailable(null);
     setProjectId("");
-    setAmount("");
+    setAmount(null);
     setDate(todayStr());
     setSupplierId("");
     setCategoryId("");
@@ -94,7 +101,7 @@ export function ExpenseOcrDialog({ open, onOpenChange }: Props) {
     if (out.served && out.parsed) {
       const parsed = out.parsed;
       setHasOcr(true);
-      if (parsed.total != null) setAmount(String(parsed.total));
+      if (parsed.total != null) setAmount(parsed.total);
       if (parsed.date) setDate(parsed.date);
       if (parsed.supplier) {
         const match = suppliers.find((s) =>
@@ -110,30 +117,12 @@ export function ExpenseOcrDialog({ open, onOpenChange }: Props) {
 
   const handleSubmit = async () => {
     if (!projectId) return toast.error("Selecciona el proyecto");
-    if (!amount || Number(amount) <= 0) return toast.error("Indica el valor del gasto");
+    if (amount == null || amount <= 0) return toast.error("Indica el valor del gasto");
 
-    const displayAmount = Number(amount);
+    const displayAmount = amount;
 
     try {
-      if (preview && user) {
-        const blob = await (await fetch(preview)).blob();
-        const file = new File([blob], `factura-${Date.now()}.jpg`, { type: "image/jpeg" });
-        const path = await uploadDocumentFile(file, user.id);
-        await createDocument({
-          project_id: projectId || null,
-          name: description || "Factura escaneada",
-          file_url: path,
-          file_type: "factura",
-        });
-      }
-    } catch {
-      toast.error("No se pudo guardar la foto de la factura", {
-        description: "El gasto aún se registrará sin el adjunto.",
-      });
-    }
-
-    createExpense.mutate(
-      {
+      const expense = await createExpense.mutateAsync({
         project_id: projectId,
         description: description || "Gasto registrado desde factura",
         amount: displayAmount,
@@ -143,15 +132,34 @@ export function ExpenseOcrDialog({ open, onOpenChange }: Props) {
         expense_date: date,
         payment_method: (paymentMethod as never) || null,
         notes: notes || null,
-      },
-      {
-        onSuccess: () => {
-          toast.success("Gasto registrado");
-          handleToggle(false);
-        },
-        onError: () => toast.error("No se pudo registrar el gasto"),
+      });
+
+      if (preview && user) {
+        try {
+          const blob = await (await fetch(preview)).blob();
+          const file = new File([blob], `factura-${Date.now()}.jpg`, { type: "image/jpeg" });
+          const path = await uploadDocumentFile(file, user.id);
+          await createDocument({
+            project_id: projectId || null,
+            name: description || "Factura escaneada",
+            file_url: path,
+            file_type: "factura",
+            related_entity: "expense",
+            related_entity_id: expense.id,
+          });
+          await updateExpense(expense.id, { ...expense, receipt_url: path });
+        } catch {
+          toast.error("No se pudo guardar la foto de la factura", {
+            description: "El gasto ya se registró sin el adjunto.",
+          });
+        }
       }
-    );
+
+      toast.success("Gasto registrado");
+      handleToggle(false);
+    } catch {
+      toast.error("No se pudo registrar el gasto");
+    }
   };
 
   return (
@@ -219,7 +227,7 @@ export function ExpenseOcrDialog({ open, onOpenChange }: Props) {
                       setAiAvailable(out.served);
                       if (out.served && out.parsed) {
                         setHasOcr(true);
-                        if (out.parsed.total != null) setAmount(String(out.parsed.total));
+                        if (out.parsed.total != null) setAmount(out.parsed.total);
                         if (out.parsed.date) setDate(out.parsed.date);
                         if (out.parsed.supplier) setDescription(out.parsed.supplier);
                       } else {
@@ -270,12 +278,10 @@ export function ExpenseOcrDialog({ open, onOpenChange }: Props) {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="ocr-amount">Valor *</Label>
-                <Input
+                <MoneyInput
                   id="ocr-amount"
-                  type="number"
-                  min={0}
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={setAmount}
                 />
               </div>
               <div className="space-y-2">
@@ -286,7 +292,7 @@ export function ExpenseOcrDialog({ open, onOpenChange }: Props) {
 
             <div className="space-y-2">
               <Label>Proveedor</Label>
-              <Select value={supplierId || undefined} onValueChange={setSupplierId}>
+              <Select value={supplierId || undefined} onValueChange={(v) => setSupplierId(v === "_none" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar proveedor" />
                 </SelectTrigger>
@@ -341,16 +347,17 @@ export function ExpenseOcrDialog({ open, onOpenChange }: Props) {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Método de pago</Label>
-                <Select value={paymentMethod || undefined} onValueChange={setPaymentMethod}>
+                <Select value={paymentMethod || undefined} onValueChange={(v) => setPaymentMethod(v === "_none" ? "" : v)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Método" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="_none">Sin método</SelectItem>
-                    <SelectItem value="cash">Efectivo</SelectItem>
-                    <SelectItem value="card">Tarjeta</SelectItem>
-                    <SelectItem value="transfer">Transferencia</SelectItem>
-                    <SelectItem value="credit">Crédito</SelectItem>
+                    {PAYMENT_OPTIONS.map((p) => (
+                      <SelectItem key={p.value} value={p.value}>
+                        {p.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

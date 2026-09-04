@@ -19,6 +19,7 @@ export interface ExpenseInput {
   expense_date: string;
   expense_time?: string | null;
   payment_method?: PaymentMethod | null;
+  receipt_url?: string | null;
   notes?: string | null;
 }
 

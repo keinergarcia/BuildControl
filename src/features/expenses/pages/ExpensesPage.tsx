@@ -80,11 +80,10 @@ export default function ExpensesPage() {
     name: string;
   } | null>(null);
   const [categoryOpen, setCategoryOpen] = useState(false);
-  const [ocrOpen, setOcrOpen] = useState(false);
+  const [ocrOpen, setOcrOpen] = useState(() => searchParams.get("action") === "ocr");
 
   useEffect(() => {
     if (searchParams.get("action") === "ocr") {
-      setOcrOpen(true);
       setSearchParams({}, { replace: true });
     }
   }, [searchParams, setSearchParams]);

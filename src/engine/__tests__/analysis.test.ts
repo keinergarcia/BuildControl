@@ -4,8 +4,6 @@ import {
   detectExpenseAnomalies,
   findOverbudgetCategories,
   groupExpensesByMonth,
-  estimateProjectDuration,
-  estimateDelay,
 } from "../analysis";
 import type { Expense, ProjectBudget } from "@/types";
 
@@ -99,25 +97,5 @@ describe("groupExpensesByMonth", () => {
     expect(out[0].label).toBe("jul 2026");
     expect(out[1].total).toBe(15_000);
     expect(out[1].count).toBe(2);
-  });
-});
-
-describe("estimateProjectDuration / estimateDelay", () => {
-  it("estima la duración total a partir del avance", () => {
-    expect(estimateProjectDuration(30, 0.5)).toBe(60);
-    expect(estimateProjectDuration(0, 0.5)).toBe(0);
-  });
-
-  it("calcula el retraso estimado con fecha prevista", () => {
-    const out = estimateDelay("2026-01-01", "2026-03-01", 30, 0.5);
-    expect(out).not.toBeNull();
-    expect(out!.expectedTotalDays).toBe(60);
-    expect(out!.delayDays).toBe(1);
-    expect(out!.expectedEndDate).toBe("2026-03-02");
-  });
-
-  it("devuelve null sin fechas válidas", () => {
-    expect(estimateDelay("", "2026-03-01", 30)).toBeNull();
-    expect(estimateDelay("2026-01-01", "2026-03-01", 0)).toBeNull();
   });
 });

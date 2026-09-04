@@ -5,7 +5,7 @@ import {
   findOverbudgetCategories,
   groupExpensesByMonth,
 } from "@/engine/analysis";
-import { formatCOP, formatCOPShort } from "@/lib/money";
+import { formatCOP } from "@/lib/money";
 
 // =============================================
 // Asistente: respuestas basadas exclusivamente
@@ -215,11 +215,11 @@ function answerBudget(ctx: AssistantContext): AssistantAnswer {
     lines.push(
       line(
         r.project.name,
-        `${r.summary.budgetUsed}% del presupuesto (exceso ${formatCOPShort(Math.max(0, exceso))})`
+        `${r.summary.budgetUsed}% del presupuesto (exceso ${formatCOP(Math.max(0, exceso))})`
       )
     );
     for (const c of cats.slice(0, 2)) {
-      lines.push(`   · ${c.name}: ${c.percent}% (${formatCOPShort(c.over)} sobre)`);
+      lines.push(`   · ${c.name}: ${c.percent}% (${formatCOP(c.over)} sobre)`);
     }
   }
   if (over.length > maxDetail) {
@@ -279,7 +279,7 @@ function answerSpend(ctx: AssistantContext, q: string): AssistantAnswer {
     const total = filtered.reduce((s, e) => s + Number(e.amount), 0);
     if (filtered.length > 0) {
       return {
-        text: `Has gastado ${formatCOPShort(total)} en "${keyword.keyword}" por ${filtered.length} registro${filtered.length === 1 ? "" : "s"}.`,
+        text: `Has gastado ${formatCOP(total)} en "${keyword.keyword}" por ${filtered.length} registro${filtered.length === 1 ? "" : "s"}.`,
         tone: "info",
         suggestions: SUGGESTIONS,
       };
@@ -489,9 +489,9 @@ function answerMonthly(ctx: AssistantContext): AssistantAnswer {
     const delta = last.total - prev.total;
     lines.push(
       delta > 0
-        ? `Este mes ${last.label} gastaste ${formatCOPShort(delta)} más que ${prev.label}.`
+        ? `Este mes ${last.label} gastaste ${formatCOP(delta)} más que ${prev.label}.`
         : delta < 0
-          ? `Este mes ${last.label} gastaste ${formatCOPShort(Math.abs(delta))} menos que ${prev.label}.`
+          ? `Este mes ${last.label} gastaste ${formatCOP(Math.abs(delta))} menos que ${prev.label}.`
           : `Este mes gastaste lo mismo que ${prev.label}.`
     );
   }

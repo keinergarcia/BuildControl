@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { invalidateFinancial } from "@/lib/query";
 import {
   fetchContracts,
   createContract,
@@ -27,8 +28,7 @@ export function useCreateContract() {
     mutationFn: (input: ContractInput) => createContract(input),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: contractKeys.all });
-      queryClient.invalidateQueries({ queryKey: ["projects", "detail", variables.project_id] });
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      invalidateFinancial(queryClient, variables.project_id);
     },
   });
 }
@@ -40,8 +40,7 @@ export function useUpdateContract() {
       updateContract(id, input),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: contractKeys.all });
-      queryClient.invalidateQueries({ queryKey: ["projects", "detail", variables.input.project_id] });
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      invalidateFinancial(queryClient, variables.input.project_id);
     },
   });
 }
@@ -52,7 +51,7 @@ export function useDeleteContract() {
     mutationFn: (id: string) => deleteContract(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: contractKeys.all });
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      invalidateFinancial(queryClient);
     },
   });
 }

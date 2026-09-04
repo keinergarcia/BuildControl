@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { invalidateFinancial } from "@/lib/query";
+import { supabase } from "@/lib/supabase";
+import { deleteDocumentFile } from "@/features/documents/api/documents";
 import { fetchBudgetCategories } from "@/features/budgets/api/budgets";
 import {
   fetchExpenses,
@@ -69,9 +71,26 @@ export function useUpdateExpense() {
 export function useDeleteExpense() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => deleteExpense(id),
+    mutationFn: async (id: string) => {
+      const { data: docs, error: docErr } = await supabase
+        .from("documents")
+        .select("id, file_url")
+        .eq("related_entity", "expense")
+        .eq("related_entity_id", id);
+      if (docErr) throw docErr;
+      await deleteExpense(id);
+      for (const doc of docs ?? []) {
+        await supabase.from("documents").delete().eq("id", doc.id);
+        try {
+          await deleteDocumentFile(doc.file_url);
+        } catch {
+          // el registro de documento ya se eliminó; el objeto de storage huérfano se limpia aparte
+        }
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: expenseKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
       invalidateFinancial(queryClient);
     },
   });

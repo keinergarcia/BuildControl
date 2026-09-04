@@ -2,25 +2,25 @@ import { useEffect, useState } from "react";
 import { getProjectCoverSignedUrl } from "./covers";
 
 export function useProjectCover(path: string | null | undefined): string | null {
-  const [url, setUrl] = useState<string | null>(null);
+  const [state, setState] = useState<{ path: string; url: string | null }>({
+    path: path ?? "",
+    url: null,
+  });
 
   useEffect(() => {
+    if (!path) return;
     let cancelled = false;
-    if (!path) {
-      setUrl(null);
-      return;
-    }
     getProjectCoverSignedUrl(path)
       .then((signed) => {
-        if (!cancelled) setUrl(signed);
+        if (!cancelled) setState({ path, url: signed });
       })
       .catch(() => {
-        if (!cancelled) setUrl(null);
+        if (!cancelled) setState({ path, url: null });
       });
     return () => {
       cancelled = true;
     };
   }, [path]);
 
-  return url;
+  return state.path === path ? state.url : null;
 }

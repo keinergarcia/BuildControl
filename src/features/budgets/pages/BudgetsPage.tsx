@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/shared/PageTransition";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MoneyInput } from "@/components/shared/MoneyInput";
 import {
   Select,
   SelectContent,
@@ -18,33 +18,45 @@ import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useProjects } from "@/features/projects/api/useProjects";
 import { useProject } from "@/features/projects/api/useProjects";
 import { useBudgetCategories, useSaveProjectBudgets } from "@/features/budgets/api/useBudgets";
+import { buildBudgetSaveItems } from "@/features/budgets/api/budgets";
 import {
   formatCOP,
-  formatCOPShort,
-  parseCurrencyInput,
   safeAdd,
   safePercentage,
+  formatPercentageDisplay,
 } from "@/lib/money";
 import { Loader2, Save, Wallet, TrendingUp, AlertTriangle } from "lucide-react";
 
 export default function BudgetsPage() {
   const { user } = useAuth();
   const [projectId, setProjectId] = useState<string>("");
-  const [edits, setEdits] = useState<Record<string, string>>({});
+  const [edits, setEdits] = useState<Record<string, number | null>>({});
 
   const { data: projects = [] } = useProjects({});
-  const project = useProject(projectId || undefined);
+  // El primer proyecto es el activo por defecto; el estado solo se usa cuando
+  // el usuario elige otro. Así no hace falta sincronizarlo con un efecto.
+  const activeId = projectId || projects[0]?.id || "";
+  const project = useProject(activeId || undefined);
   const { data: categories = [] } = useBudgetCategories();
   const saveMutation = useSaveProjectBudgets();
 
-  useEffect(() => {
-    if (!projectId && projects.length > 0) {
-      setProjectId(projects[0].id);
-    }
-  }, [projectId, projects]);
+  const budgets = useMemo(() => project.data?.budgets ?? [], [project.data]);
+  const expenses = useMemo(() => project.data?.expenses ?? [], [project.data]);
 
-  const budgets = project.data?.budgets ?? [];
-  const expenses = project.data?.expenses ?? [];
+  const laborCost = useMemo(
+    () =>
+      (project.data?.worker_payments ?? []).reduce(
+        (s, p) => s + Number(p.amount),
+        0
+      ),
+    [project.data]
+  );
+
+  // Rubro que absorbe los pagos a trabajadores (mano de obra).
+  const laborCategory = useMemo(
+    () => categories.find((c) => c.name.trim().toLowerCase() === "mano de obra") ?? null,
+    [categories]
+  );
 
   const spentByCategory = useMemo(() => {
     const map: Record<string, number> = {};
@@ -52,8 +64,12 @@ export default function BudgetsPage() {
       const key = e.category_id ?? "";
       map[key] = safeAdd(map[key] ?? 0, Number(e.amount));
     }
+    // Los pagos a trabajadores se imputan al rubro "Mano de Obra".
+    if (laborCategory) {
+      map[laborCategory.id] = safeAdd(map[laborCategory.id] ?? 0, laborCost);
+    }
     return map;
-  }, [expenses]);
+  }, [expenses, laborCategory, laborCost]);
 
   const rows = useMemo(() => {
     const budgetMap = new Map(budgets.map((b) => [b.category_id, Number(b.budgeted_amount)]));
@@ -65,7 +81,22 @@ export default function BudgetsPage() {
   }, [categories, budgets, spentByCategory]);
 
   const totalBudgeted = useMemo(() => safeAdd(...rows.map((r) => r.budgeted)), [rows]);
-  const totalSpent = useMemo(() => safeAdd(...rows.map((r) => r.spent)), [rows]);
+
+  // Gastos sin categoría + mano de obra si no hay rubro "Mano de Obra" definido.
+  const uncategorizedSpent = useMemo(
+    () =>
+      expenses
+        .filter((e) => !e.category_id)
+        .reduce((s, e) => s + Number(e.amount), 0) +
+      (laborCategory ? 0 : laborCost),
+    [expenses, laborCategory, laborCost]
+  );
+
+  // Total gastado consistente con el dashboard: todos los gastos + mano de obra.
+  const totalSpent = useMemo(
+    () => safeAdd(...rows.map((r) => r.spent), uncategorizedSpent),
+    [rows, uncategorizedSpent]
+  );
   const available = totalBudgeted - totalSpent;
   const usedPct = safePercentage(totalSpent, totalBudgeted);
   const contractValue = useMemo(() => {
@@ -74,18 +105,18 @@ export default function BudgetsPage() {
   }, [project.data]);
 
   const handleSave = () => {
-    if (!user || !projectId) return;
-    const items = rows.map((r) => ({
-      category_id: r.category.id,
-      budgeted_amount: parseCurrencyInput(edits[r.category.id] ?? "") || 0,
-    }));
+    if (!user || !activeId) return;
+    const items = buildBudgetSaveItems(
+      rows.map((r) => ({ category_id: r.category.id, budgeted: r.budgeted })),
+      edits
+    );
     saveMutation.mutate(
-      { projectId, userId: user.id, items },
+      { projectId: activeId, userId: user.id, items },
       {
         onSuccess: () => {
           setEdits({});
-          toast.success("Presupuesto guardado", {
-            description: "Los cálculos de utilización se actualizan.",
+          toast.success("Presupuesto actualizado", {
+            description: "El valor se guardó como presupuesto total de cada rubro.",
           });
         },
         onError: () => toast.error("No se pudo guardar el presupuesto"),
@@ -93,7 +124,7 @@ export default function BudgetsPage() {
     );
   };
 
-  const setAmount = (categoryId: string, value: string) => {
+  const setAmount = (categoryId: string, value: number | null) => {
     setEdits((prev) => ({ ...prev, [categoryId]: value }));
   };
 
@@ -108,7 +139,7 @@ export default function BudgetsPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Select value={projectId} onValueChange={setProjectId}>
+            <Select value={activeId} onValueChange={setProjectId}>
               <SelectTrigger className="w-64">
                 <SelectValue placeholder="Selecciona un proyecto" />
               </SelectTrigger>
@@ -120,7 +151,7 @@ export default function BudgetsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="glow" onClick={handleSave} disabled={!projectId || saveMutation.isPending}>
+            <Button variant="glow" onClick={handleSave} disabled={!activeId || saveMutation.isPending}>
               {saveMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
@@ -131,7 +162,7 @@ export default function BudgetsPage() {
           </div>
         </div>
 
-        {!projectId && (
+        {!activeId && (
           <Card className="flex flex-col items-center justify-center gap-3 p-10 text-center">
             <AlertTriangle className="h-8 w-8 text-muted-foreground" />
             <p className="font-semibold">Selecciona un proyecto</p>
@@ -141,7 +172,7 @@ export default function BudgetsPage() {
           </Card>
         )}
 
-        {projectId && project.isLoading && (
+        {activeId && project.isLoading && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-28 animate-pulse rounded-2xl bg-secondary" />
@@ -149,30 +180,30 @@ export default function BudgetsPage() {
           </div>
         )}
 
-        {projectId && project.isError && (
+        {activeId && project.isError && (
           <Card className="flex flex-col items-center justify-center gap-2 p-10 text-center">
             <AlertTriangle className="h-8 w-8 text-destructive" />
             <p>No se pudo cargar el presupuesto del proyecto.</p>
           </Card>
         )}
 
-        {projectId && project.data && (
+        {activeId && project.data && (
           <>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <StatCard
                 label="Presupuesto total"
-                value={formatCOPShort(totalBudgeted)}
+                value={formatCOP(totalBudgeted)}
                 icon={<Wallet className="h-5 w-5 text-primary" />}
               />
               <StatCard
                 label="Gastado"
-                value={formatCOPShort(totalSpent)}
+                value={formatCOP(totalSpent)}
                 icon={<TrendingUp className="h-5 w-5 text-destructive" />}
-                sub={`${safePercentage(totalSpent, totalBudgeted)}% utilizado`}
+                sub={`${formatPercentageDisplay(safePercentage(totalSpent, totalBudgeted))} utilizado`}
               />
               <StatCard
                 label="Disponible"
-                value={formatCOPShort(available)}
+                value={formatCOP(available)}
                 icon={<Wallet className="h-5 w-5 text-emerald-500" />}
                 negative={available < 0}
               />
@@ -187,7 +218,7 @@ export default function BudgetsPage() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Rubros del presupuesto</CardTitle>
                 <Badge variant={usedPct > 100 ? "destructive" : "secondary"}>
-                  {safePercentage(totalSpent, totalBudgeted)}% utilizado
+                  {formatPercentageDisplay(usedPct)} utilizado
                 </Badge>
               </CardHeader>
               <CardContent className="space-y-2 p-2">
@@ -199,9 +230,7 @@ export default function BudgetsPage() {
                 </div>
                 {rows.map((r) => {
                   const pct = safePercentage(r.spent, r.budgeted);
-                  const currentValue = edits[r.category.id] !== undefined
-                    ? edits[r.category.id]
-                    : String(r.budgeted || "");
+                  const currentValue = edits[r.category.id] ?? r.budgeted;
                   return (
                     <div
                       key={r.category.id}
@@ -210,29 +239,33 @@ export default function BudgetsPage() {
                       <div>
                         <p className="font-medium">{r.category.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          Gastado: <span className="tabular-nums">{formatCOPShort(r.spent)}</span>
+                          Gastado: <span className="tabular-nums">{formatCOP(r.spent)}</span>
                         </p>
                       </div>
                       <div className="flex items-center gap-2 md:flex-col md:items-start">
                         <Label className="md:hidden">Presupuestado</Label>
-                        <Input
+                        <MoneyInput
                           value={currentValue}
-                          onChange={(e) => setAmount(r.category.id, e.target.value)}
+                          onChange={(v) => setAmount(r.category.id, v)}
                           placeholder="0"
-                          inputMode="numeric"
                         />
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground md:hidden">Gastado</p>
-                        <p className="font-semibold tabular-nums">{formatCOPShort(r.spent)}</p>
+                        <p className="font-semibold tabular-nums">{formatCOP(r.spent)}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <ProgressBar value={pct} className="flex-1" />
-                        <span className="w-10 text-right text-xs tabular-nums">{pct}%</span>
+                        <span className="w-14 shrink-0 text-right text-xs tabular-nums">
+                          {formatPercentageDisplay(pct)}
+                        </span>
                       </div>
                     </div>
                   );
                 })}
+                {uncategorizedSpent > 0 && (
+                  <ExtraRow label="Gastos sin rubro" amount={uncategorizedSpent} />
+                )}
               </CardContent>
             </Card>
           </>
@@ -270,5 +303,24 @@ function StatCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function ExtraRow({ label, amount }: { label: string; amount: number }) {
+  return (
+    <div className="grid grid-cols-1 gap-3 rounded-xl border border-dashed border-border/60 p-4 md:grid-cols-[1fr_repeat(3,120px)] md:items-center md:gap-4">
+      <div>
+        <p className="font-semibold">{label}</p>
+        <p className="text-xs text-muted-foreground">
+          Gasto complementario al presupuesto por rubros
+        </p>
+      </div>
+      <div className="hidden md:block" />
+      <div>
+        <p className="text-xs text-muted-foreground md:hidden">Gastado</p>
+        <p className="font-semibold tabular-nums">{formatCOP(amount)}</p>
+      </div>
+      <div className="hidden md:block" />
+    </div>
   );
 }

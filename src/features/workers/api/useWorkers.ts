@@ -49,6 +49,8 @@ export function useDeleteWorker() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: workerKeys.all });
       queryClient.invalidateQueries({ queryKey: ["worker-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["worker-assignment-count"] });
+      queryClient.invalidateQueries({ queryKey: ["worker-assignments"] });
     },
   });
 }

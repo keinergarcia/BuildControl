@@ -8,12 +8,9 @@ export {
   calculateMaterialCost,
   calculatePersonalWithdrawals,
   calculateAvailableCash,
-  calculateBudgetUsed,
-  calculateRemainingBudget,
   calculateProfit,
   calculateProfitMargin,
   calculateExpectedProfit,
-  calculateActualProfit,
   calculateProjectedProfit,
   calculateProjectedCost,
   calculateDailyCost,
@@ -31,7 +28,5 @@ export {
   detectExpenseAnomalies,
   findOverbudgetCategories,
   groupExpensesByMonth,
-  estimateProjectDuration,
-  estimateDelay,
 } from "./analysis";
-export type { AnomalyResult, OverbudgetCategory, MonthlySpend, DelayEstimate } from "./analysis";
+export type { AnomalyResult, OverbudgetCategory, MonthlySpend } from "./analysis";

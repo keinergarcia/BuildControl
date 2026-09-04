@@ -23,6 +23,7 @@ export async function fetchDashboardData(): Promise<ProjectWithDetails[]> {
 
 export async function fetchRecentActivity(
   projectIds: string[],
+  userId: string | undefined,
   limit = 8
 ): Promise<ActivityItem[]> {
   if (projectIds.length === 0) return [];
@@ -31,6 +32,7 @@ export async function fetchRecentActivity(
     queryTable(
       "expenses",
       projectIds,
+      userId,
       limit,
       { id: "id", project_id: "project_id", description: "description", amount: "amount", date: "expense_date", created_at: "created_at" },
       "expense"
@@ -38,6 +40,7 @@ export async function fetchRecentActivity(
     queryTable(
       "income_payments",
       projectIds,
+      userId,
       limit,
       { id: "id", project_id: "project_id", description: "concept", amount: "amount", date: "payment_date", created_at: "created_at" },
       "income"
@@ -45,6 +48,7 @@ export async function fetchRecentActivity(
     queryTable(
       "worker_payments",
       projectIds,
+      userId,
       limit,
       { id: "id", project_id: "project_id", description: "concept", amount: "amount", date: "payment_date", created_at: "created_at" },
       "worker_payment"

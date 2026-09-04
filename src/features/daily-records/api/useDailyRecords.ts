@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { invalidateProjects } from "@/lib/query";
 import {
   fetchDailyRecords,
   createDailyRecord,
@@ -25,7 +26,7 @@ export function useCreateDailyRecord() {
     mutationFn: (input: DailyRecordInput) => createDailyRecord(input),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: dailyRecordKeys.list(variables.project_id) });
-      queryClient.invalidateQueries({ queryKey: ["projects", "detail", variables.project_id] });
+      invalidateProjects(queryClient, variables.project_id);
     },
   });
 }
@@ -37,7 +38,7 @@ export function useUpdateDailyRecord() {
       updateDailyRecord(id, input),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: dailyRecordKeys.list(variables.input.project_id) });
-      queryClient.invalidateQueries({ queryKey: ["projects", "detail", variables.input.project_id] });
+      invalidateProjects(queryClient, variables.input.project_id);
     },
   });
 }

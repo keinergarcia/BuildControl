@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { answerQuestion, type AssistantContext } from "../insights";
-import { formatCOP, formatCOPShort } from "@/lib/money";
+import { formatCOP } from "@/lib/money";
 import type { ProjectWithDetails, FinancialSummary } from "@/types";
 
 const summary: FinancialSummary = {
@@ -97,7 +97,7 @@ describe("answerQuestion — gastos", () => {
   it("filtra gastos por keyword real (cemento)", () => {
     const a = answerQuestion("¿cuánto he gastado en cemento?", ctx);
     expect(a.text).toContain("cemento");
-    expect(a.text).toContain(formatCOPShort(800_000));
+    expect(a.text).toContain(formatCOP(800_000));
   });
 
   it("da totales reales si no hay keyword", () => {

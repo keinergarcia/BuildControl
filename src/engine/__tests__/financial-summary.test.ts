@@ -3,7 +3,6 @@ import {
   buildFinancialSummary,
   calculateProjectedProfit,
   calculateMaterialCost,
-  calculateRemainingBudget,
 } from "../calculations";
 import type {
   Contract,
@@ -119,8 +118,18 @@ function makeBudget(overrides: Partial<ProjectBudget> = {}): ProjectBudget {
 const CONTRACT = makeContract({ total_value: 180000000 });
 
 const EXPENSES: Expense[] = [
-  makeExpense({ id: "e1", category_id: "mat", amount: 12500000 }),
-  makeExpense({ id: "e2", category_id: "trp", amount: 3500000 }),
+  makeExpense({
+    id: "e1",
+    category_id: "mat",
+    category: { id: "mat", name: "Materiales", icon: null, color: null, sort_order: 1 },
+    amount: 12500000,
+  }),
+  makeExpense({
+    id: "e2",
+    category_id: "trp",
+    category: { id: "trp", name: "Transporte", icon: null, color: null, sort_order: 3 },
+    amount: 3500000,
+  }),
   makeExpense({ id: "e3", category_id: null, amount: 5000000 }),
 ];
 
@@ -146,18 +155,8 @@ const BUDGETS: ProjectBudget[] = [
 ];
 
 describe("calculateMaterialCost", () => {
-  it("sums only expenses with a budget category", () => {
-    expect(calculateMaterialCost(EXPENSES)).toBe(16000000);
-  });
-});
-
-describe("calculateRemainingBudget", () => {
-  it("returns the sum of budgeted amounts (no clamp against cost)", () => {
-    expect(calculateRemainingBudget(BUDGETS)).toBe(85000000);
-  });
-
-  it("returns 0 with no budgets", () => {
-    expect(calculateRemainingBudget([])).toBe(0);
+  it("sums only expenses whose budget category is 'Materiales'", () => {
+    expect(calculateMaterialCost(EXPENSES)).toBe(12500000);
   });
 });
 
@@ -198,7 +197,7 @@ describe("buildFinancialSummary", () => {
     expect(s.pendingAmount).toBe(54000000);
     expect(s.totalExpenses).toBe(21000000);
     expect(s.laborCost).toBe(130000);
-    expect(s.materialCost).toBe(16000000);
+    expect(s.materialCost).toBe(12500000);
     expect(s.totalCosts).toBe(21130000);
     expect(s.totalWithdrawals).toBe(1000000);
     expect(s.availableCash).toBe(103870000);

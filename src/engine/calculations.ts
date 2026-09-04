@@ -38,7 +38,7 @@ export function calculateTotalCosts(expenses: Expense[], workerPayments: WorkerP
 
 export function calculateMaterialCost(expenses: Expense[]): number {
   return expenses
-    .filter((e) => e.category_id != null)
+    .filter((e) => e.category?.name === "Materiales")
     .reduce((sum, e) => sum + Number(e.amount), 0);
 }
 
@@ -54,16 +54,6 @@ export function calculateAvailableCash(
   return received - totalCosts - withdrawals;
 }
 
-export function calculateBudgetUsed(budgets: ProjectBudget[], totalCosts: number): number {
-  const totalBudget = budgets.reduce((sum, b) => sum + Number(b.budgeted_amount), 0);
-  if (totalBudget === 0) return 0;
-  return Math.round((totalCosts / totalBudget) * 10000) / 100;
-}
-
-export function calculateRemainingBudget(budgets: ProjectBudget[]): number {
-  return budgets.reduce((sum, b) => sum + Number(b.budgeted_amount), 0);
-}
-
 export function calculateProfit(contractValue: number, totalCosts: number): number {
   return contractValue - totalCosts;
 }
@@ -73,13 +63,6 @@ export function calculateExpectedProfit(
   totalBudget: number
 ): number {
   return contractValue - totalBudget;
-}
-
-export function calculateActualProfit(
-  contractValue: number,
-  totalCosts: number
-): number {
-  return contractValue - totalCosts;
 }
 
 // Costo proyectado al ritmo de gasto actual: costo real + costo diario * días restantes.
@@ -106,8 +89,9 @@ export function calculateProjectedProfit(
 ): number {
   if (totalDays === 0 || daysElapsed === 0) return contractValue - totalCosts;
   const projectedDailyCost = totalCosts / daysElapsed;
-  const projectedTotalCost = projectedDailyCost * totalDays;
-  return contractValue - projectedTotalCost;
+  // Consistent with calculateProjectedCost: never project more days than total
+  const projectedTotalCost = projectedDailyCost * Math.max(0, totalDays - daysElapsed) + totalCosts;
+  return Math.round(contractValue - projectedTotalCost);
 }
 
 export function calculateDailyCost(

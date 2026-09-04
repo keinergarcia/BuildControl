@@ -12,7 +12,7 @@ import { ProgressBar } from "@/components/shared/ProgressBar";
 import { AnimatedNumber } from "@/components/shared/AnimatedNumber";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatDate } from "@/utils/date";
-import { formatCOP, formatCOPShort, safePercentage } from "@/lib/money";
+import { formatCOP, safePercentage } from "@/lib/money";
 import { buildFinancialSummary } from "@/engine/calculations";
 import { PROJECT_STATUS_LABELS } from "@/types";
 import {
@@ -37,6 +37,7 @@ import {
   TrendingUp,
   CircleDollarSign,
   Wallet,
+  Landmark,
   Clock,
   Loader2,
   AlertTriangle,
@@ -111,7 +112,7 @@ export default function ProjectDetailPage() {
     {
       title: "Valor Contrato",
       value: summary.contractValue,
-      format: formatCOPShort,
+      format: formatCOP,
       icon: Receipt,
       color: "text-primary",
       bg: "bg-primary/10",
@@ -119,7 +120,7 @@ export default function ProjectDetailPage() {
     {
       title: "Recibido",
       value: summary.receivedAmount,
-      format: formatCOPShort,
+      format: formatCOP,
       icon: CircleDollarSign,
       color: "text-success",
       bg: "bg-success/10",
@@ -127,15 +128,23 @@ export default function ProjectDetailPage() {
     {
       title: "Costos Totales",
       value: summary.totalCosts,
-      format: formatCOPShort,
+      format: formatCOP,
       icon: Wallet,
       color: "text-warning",
       bg: "bg-warning/10",
     },
     {
+      title: "Dinero Disponible",
+      value: summary.availableCash,
+      format: formatCOP,
+      icon: Landmark,
+      color: "text-success",
+      bg: "bg-success/10",
+    },
+    {
       title: "Utilidad",
       value: summary.profit,
-      format: formatCOPShort,
+      format: formatCOP,
       icon: TrendingUp,
       color: "text-info",
       bg: "bg-info/10",
@@ -143,7 +152,7 @@ export default function ProjectDetailPage() {
     {
       title: "Mano de Obra",
       value: summary.laborCost,
-      format: formatCOPShort,
+      format: formatCOP,
       icon: Users,
       color: "text-muted-foreground",
       bg: "bg-secondary",

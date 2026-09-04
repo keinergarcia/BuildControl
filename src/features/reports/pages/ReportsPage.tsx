@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatCOP, formatCOPShort } from "@/lib/money";
+import { formatCOP } from "@/lib/money";
 import { formatDate } from "@/utils/date";
 import { exportXlsx } from "@/lib/xlsx";
 import { exportReportPdf } from "@/lib/pdf";
@@ -134,11 +134,11 @@ export default function ReportsPage() {
     rows.forEach((r) => {
       const s = r.summary;
       single.push(["Obra", r.project.name]);
-      single.push(["Contratado", formatCOPShort(s.contractValue)]);
-      single.push(["Recibido", formatCOPShort(s.receivedAmount)]);
-      single.push(["Pendiente", formatCOPShort(s.pendingAmount)]);
-      single.push(["Costos", formatCOPShort(s.totalCosts)]);
-      single.push(["Utilidad", formatCOPShort(s.profit)]);
+      single.push(["Contratado", formatCOP(s.contractValue)]);
+      single.push(["Recibido", formatCOP(s.receivedAmount)]);
+      single.push(["Pendiente", formatCOP(s.pendingAmount)]);
+      single.push(["Costos", formatCOP(s.totalCosts)]);
+      single.push(["Utilidad", formatCOP(s.profit)]);
       single.push([]);
     });
 
@@ -288,31 +288,31 @@ export default function ReportsPage() {
               <div className="rounded-lg border border-border bg-card p-3">
                 <p className="text-xs font-medium text-muted-foreground">Contratado</p>
                 <p className="mt-1 text-lg font-bold tabular-nums">
-                  {formatCOPShort(totals.contractValue)}
+                  {formatCOP(totals.contractValue)}
                 </p>
               </div>
               <div className="rounded-lg border border-border bg-card p-3">
                 <p className="text-xs font-medium text-muted-foreground">Recibido</p>
                 <p className="mt-1 text-lg font-bold tabular-nums text-success">
-                  {formatCOPShort(totals.receivedAmount)}
+                  {formatCOP(totals.receivedAmount)}
                 </p>
               </div>
               <div className="rounded-lg border border-border bg-card p-3">
                 <p className="text-xs font-medium text-muted-foreground">Pendiente</p>
                 <p className="mt-1 text-lg font-bold tabular-nums text-warning">
-                  {formatCOPShort(totals.pendingAmount)}
+                  {formatCOP(totals.pendingAmount)}
                 </p>
               </div>
               <div className="rounded-lg border border-border bg-card p-3">
                 <p className="text-xs font-medium text-muted-foreground">Costos</p>
                 <p className="mt-1 text-lg font-bold tabular-nums text-destructive">
-                  {formatCOPShort(totals.totalCosts)}
+                  {formatCOP(totals.totalCosts)}
                 </p>
               </div>
               <div className="rounded-lg border border-border bg-card p-3">
                 <p className="text-xs font-medium text-muted-foreground">Utilidad</p>
                 <p className="mt-1 text-lg font-bold tabular-nums text-success">
-                  {formatCOPShort(totals.profit)}
+                  {formatCOP(totals.profit)}
                 </p>
               </div>
             </div>

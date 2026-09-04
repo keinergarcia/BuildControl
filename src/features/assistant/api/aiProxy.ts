@@ -3,6 +3,8 @@
 // asistente usa el motor local determinista (insights.ts), que garantiza
 // respuestas con datos reales.
 
+import { supabase } from "@/lib/supabase";
+
 export type AiTask = "chat" | "ocr" | "predict";
 
 const baseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -21,19 +23,27 @@ export async function callAi(
   if (!enabled || !baseUrl) return null;
 
   try {
+    // La Edge Function exige autenticación JWT; adjuntamos el token de sesión.
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return null;
+
     const res = await fetch(`${baseUrl}/functions/v1/ai`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ task, payload, image }),
       signal: AbortSignal.timeout(20000),
     });
-    const data = (await res.json()) as {
+    const data2 = (await res.json()) as {
       served: boolean;
       reason?: string;
       result?: string;
     };
-    if (!data.served) return null;
-    return { served: true, text: typeof data.result === "string" ? data.result : undefined };
+    if (!data2.served) return null;
+    return { served: true, text: typeof data2.result === "string" ? data2.result : undefined };
   } catch {
     return null;
   }

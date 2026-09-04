@@ -1,10 +1,7 @@
 import { supabase } from "@/lib/supabase";
+import { sanitizeFileName } from "@/lib/utils";
 
 const COVER_BUCKET = "covers";
-
-function sanitizeFileName(name: string): string {
-  return name.replace(/[^\w.-]+/g, "_").slice(0, 120);
-}
 
 export async function uploadProjectCover(file: File, userId: string): Promise<string> {
   const path = `${userId}/${crypto.randomUUID()}-${sanitizeFileName(file.name)}`;

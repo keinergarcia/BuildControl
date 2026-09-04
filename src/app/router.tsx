@@ -1,6 +1,12 @@
+// oxlint-disable react/only-export-components
+// -- Code-splitting con lazy(): el archivo exporta el objeto `router`
+// (createBrowserRouter, no es un componente) y define los const lazy de cada
+// página. React Fast Refresh no aplica a configuraciones de ruta con lazy de
+// todos modos; separar cada página en su archivo añade fricción sin beneficio.
 import { lazy, Suspense } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Loader2 } from "lucide-react";
 
 function RouteFallback() {
@@ -11,8 +17,29 @@ function RouteFallback() {
   );
 }
 
+const RouteErrorFallback = () => (
+  <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-6 text-center">
+    <h2 className="text-lg font-semibold">Algo salió mal</h2>
+    <p className="text-sm text-muted-foreground">
+      Ocurrió un error inesperado al cargar esta vista.
+    </p>
+    <a
+      href="/"
+      className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+    >
+      Volver al inicio
+    </a>
+  </div>
+);
+
 const LoginPage = lazy(() =>
   import("@/features/auth/pages/LoginPage").then((m) => ({ default: m.LoginPage }))
+);
+const ResetPasswordPage = lazy(() =>
+  import("@/features/auth/pages/ResetPasswordPage").then((m) => ({ default: m.ResetPasswordPage }))
+);
+const LandingPage = lazy(() =>
+  import("@/features/landing/pages/LandingPage").then((m) => ({ default: m.LandingPage }))
 );
 const DashboardPage = lazy(() => import("@/features/dashboard/pages/DashboardPage"));
 const ProjectsPage = lazy(() => import("@/features/projects/pages/ProjectsPage"));
@@ -40,16 +67,36 @@ const SettingsPage = lazy(() => import("@/features/settings/pages/SettingsPage")
 
 export const router = createBrowserRouter([
   {
+    path: "/landing",
+    element: (
+      <Suspense fallback={<RouteFallback />}>
+        <LandingPage />
+      </Suspense>
+    ),
+    errorElement: <RouteErrorFallback />,
+  },
+  {
     path: "/login",
     element: (
       <Suspense fallback={<RouteFallback />}>
         <LoginPage />
       </Suspense>
     ),
+    errorElement: <RouteErrorFallback />,
+  },
+  {
+    path: "/reset-password",
+    element: (
+      <Suspense fallback={<RouteFallback />}>
+        <ResetPasswordPage />
+      </Suspense>
+    ),
+    errorElement: <RouteErrorFallback />,
   },
   {
     path: "/",
     element: <Layout />,
+    errorElement: <RouteErrorFallback />,
     children: [
       { index: true, element: <Page element={<DashboardPage />} /> },
       { path: "projects", element: <Page element={<ProjectsPage />} /> },
@@ -73,5 +120,9 @@ export const router = createBrowserRouter([
 ]);
 
 function Page({ element }: { element: React.ReactNode }) {
-  return <Suspense fallback={<RouteFallback />}>{element}</Suspense>;
+  return (
+    <ErrorBoundary fallback={<RouteErrorFallback />}>
+      <Suspense fallback={<RouteFallback />}>{element}</Suspense>
+    </ErrorBoundary>
+  );
 }

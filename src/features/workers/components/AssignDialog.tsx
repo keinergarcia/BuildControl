@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MoneyInput } from "@/components/shared/MoneyInput";
 import {
   Select,
   SelectContent,
@@ -46,16 +47,21 @@ export function AssignDialog({
   const [projectId, setProjectId] = useState("");
   const [startDate, setStartDate] = useState(todayStr());
   const [endDate, setEndDate] = useState("");
-  const [rateOverride, setRateOverride] = useState("");
+  const [rateOverride, setRateOverride] = useState<number | null>(null);
+  const [dateError, setDateError] = useState("");
 
+  // oxlint-disable react/set-state-in-effect -- Reinicia el formulario de
+  // asignación cuando se abre el diálogo (sincronización con prop externa).
   useEffect(() => {
     if (open) {
       setProjectId("");
       setStartDate(todayStr());
       setEndDate("");
-      setRateOverride("");
+      setRateOverride(null);
+      setDateError("");
     }
   }, [open]);
+  // oxlint-enable react/set-state-in-effect
 
   const workerAssignments = useMemo(
     () =>
@@ -67,20 +73,31 @@ export function AssignDialog({
 
   const handleCreate = () => {
     if (!worker || !projectId) return;
+
+    if (endDate && startDate && endDate < startDate) {
+      setDateError("La fecha de fin debe ser posterior o igual a la de inicio");
+      return;
+    }
+    if (rateOverride != null && rateOverride < 0) {
+      toast.error("La tarifa no puede ser negativa");
+      return;
+    }
+
     createMutation.mutate(
       {
         worker_id: worker.id,
         project_id: projectId,
         start_date: startDate,
         end_date: endDate || null,
-        daily_rate_override: rateOverride ? Number(rateOverride) : null,
+        daily_rate_override: rateOverride && rateOverride > 0 ? rateOverride : null,
       },
       {
         onSuccess: () => {
           setProjectId("");
           setStartDate(todayStr());
           setEndDate("");
-          setRateOverride("");
+          setRateOverride(null);
+          setDateError("");
           toast.success("Trabajador asignado a la obra");
         },
         onError: () =>
@@ -133,22 +150,26 @@ export function AssignDialog({
               <Input
                 id="assign-end"
                 type="date"
+                min={startDate || undefined}
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setDateError("");
+                }}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="assign-rate">Tarifa día (opcional)</Label>
-              <Input
+              <MoneyInput
                 id="assign-rate"
-                type="number"
-                inputMode="numeric"
                 value={rateOverride}
-                onChange={(e) => setRateOverride(e.target.value)}
+                onChange={setRateOverride}
                 placeholder="Ej. 90000"
               />
             </div>
           </div>
+
+          {dateError && <p className="text-sm text-destructive">{dateError}</p>}
 
           <Button
             variant="glow"

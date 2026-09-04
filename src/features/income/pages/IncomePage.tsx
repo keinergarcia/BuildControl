@@ -16,6 +16,7 @@ import { formatCOP } from "@/lib/money";
 import { formatDate, formatTime } from "@/utils/date";
 import { PAYMENT_METHOD_LABELS } from "@/types";
 import { useProjects } from "@/features/projects/api/useProjects";
+import { useProject } from "@/features/projects/api/useProjects";
 import { useClients } from "@/features/clients/api/useClients";
 import {
   useIncome,
@@ -70,6 +71,7 @@ export default function IncomePage() {
 
   const { data: projects = [] } = useProjects({});
   const { data: clients = [] } = useClients();
+  const projectDetail = useProject(projectFilter !== "all" ? projectFilter : undefined);
   const {
     data: income = [],
     isLoading,
@@ -94,6 +96,16 @@ export default function IncomePage() {
   );
   const pending =
     contractValue != null ? Math.max(0, contractValue - received) : null;
+
+  // Saldo disponible de la obra: recibido - gastos - pagos a trabajadores - retiros.
+  const availableCash = useMemo(() => {
+    const d = projectDetail.data;
+    if (!d) return null;
+    const costs = (d.expenses ?? []).reduce((s, e) => s + Number(e.amount), 0) +
+      (d.worker_payments ?? []).reduce((s, p) => s + Number(p.amount), 0);
+    const withdrawals = (d.personal_withdrawals ?? []).reduce((s, w) => s + Number(w.amount), 0);
+    return received - costs - withdrawals;
+  }, [projectDetail.data, received]);
 
   const openCreate = () => {
     setEditing(null);
@@ -143,7 +155,7 @@ export default function IncomePage() {
         </div>
 
         {projectFilter !== "all" && contractValue != null && (
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             <SummaryCard
               label="Contrato"
               value={formatCOP(contractValue)}
@@ -158,6 +170,12 @@ export default function IncomePage() {
               label="Pendiente"
               value={formatCOP(pending ?? 0)}
               icon={<HandCoins className="h-5 w-5 text-info" />}
+            />
+            <SummaryCard
+              label="Saldo disponible"
+              value={availableCash != null ? formatCOP(availableCash) : "…"}
+              icon={<CircleDollarSign className="h-5 w-5 text-primary" />}
+              negative={(availableCash ?? 0) < 0}
             />
           </div>
         )}
@@ -356,10 +374,12 @@ function SummaryCard({
   label,
   value,
   icon,
+  negative,
 }: {
   label: string;
   value: string;
   icon: React.ReactNode;
+  negative?: boolean;
 }) {
   return (
     <Card>
@@ -369,7 +389,9 @@ function SummaryCard({
         </div>
         <div className="min-w-0">
           <p className="truncate text-sm text-muted-foreground">{label}</p>
-          <p className="text-xl font-bold tabular-nums">{value}</p>
+          <p className={`text-xl font-bold tabular-nums ${negative ? "text-destructive" : ""}`}>
+            {value}
+          </p>
         </div>
       </CardContent>
     </Card>

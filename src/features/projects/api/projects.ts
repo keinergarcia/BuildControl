@@ -44,7 +44,7 @@ export async function fetchProject(id: string): Promise<ProjectWithDetails> {
       client:clients(id, name, company),
       contracts(id, project_id, contract_type, total_value, daily_rate, start_date, planned_end_date, conditions, notes),
       budgets:project_budgets(id, project_id, category_id, budgeted_amount),
-      expenses(id, project_id, category_id, description, amount, expense_date, payment_method, notes),
+      expenses(id, project_id, category_id, description, amount, expense_date, payment_method, notes, category:budget_categories(id, name, color, icon)),
       worker_payments(id, project_id, worker_id, amount, payment_date, concept, payment_method, notes),
       income_payments(id, project_id, client_id, amount, payment_date, concept, payment_method, notes),
       personal_withdrawals(id, project_id, amount, withdrawal_date, reason, notes)`

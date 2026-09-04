@@ -7,6 +7,7 @@ import { contractSchema } from "@/utils/validators";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MoneyInput } from "@/components/shared/MoneyInput";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -71,7 +72,7 @@ function toFormValue(
   };
 }
 
-export function buildContractInput(data: ContractFormData): ContractInput {
+function buildContractInput(data: ContractFormData): ContractInput {
   return {
     project_id: data.project_id,
     contract_type: data.contract_type,
@@ -185,12 +186,17 @@ export function ContractForm({
               <Label htmlFor="total_value">
                 {isDaily ? "Valor por día" : "Valor del contrato"} *
               </Label>
-              <Input
-                id="total_value"
-                type="number"
-                inputMode="numeric"
-                {...register("total_value", { valueAsNumber: true })}
-                aria-invalid={!!errors.total_value}
+              <Controller
+                control={control}
+                name="total_value"
+                render={({ field }) => (
+                  <MoneyInput
+                    id="total_value"
+                    value={field.value}
+                    onChange={field.onChange}
+                    ariaInvalid={!!errors.total_value}
+                  />
+                )}
               />
               {errors.total_value && (
                 <p className="text-sm text-destructive">{errors.total_value.message}</p>
@@ -199,11 +205,16 @@ export function ContractForm({
             {isDaily && (
               <div className="space-y-2">
                 <Label htmlFor="daily_rate">Tarifa diaria</Label>
-                <Input
-                  id="daily_rate"
-                  type="number"
-                  inputMode="numeric"
-                  {...register("daily_rate", { valueAsNumber: true })}
+                <Controller
+                  control={control}
+                  name="daily_rate"
+                  render={({ field }) => (
+                    <MoneyInput
+                      id="daily_rate"
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  )}
                 />
               </div>
             )}

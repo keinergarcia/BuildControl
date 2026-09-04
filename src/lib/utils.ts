@@ -19,3 +19,8 @@ export function initials(name: string): string {
     .toUpperCase()
     .slice(0, 2);
 }
+
+/** Sanitiza un nombre de archivo para usarlo seguro en rutas de Storage. */
+export function sanitizeFileName(name: string): string {
+  return name.replace(/[^\w.-]+/g, "_").slice(0, 120);
+}

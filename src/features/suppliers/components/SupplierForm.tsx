@@ -29,7 +29,7 @@ function toFormValue(supplier: Supplier | null): SupplierFormData {
   };
 }
 
-export function buildSupplierInput(data: SupplierFormData): SupplierInput {
+function buildSupplierInput(data: SupplierFormData): SupplierInput {
   return {
     name: data.name,
     phone: toNull(data.phone),

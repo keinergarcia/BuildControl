@@ -1,23 +1,64 @@
 import { PageTransition } from "@/components/shared/PageTransition";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useTheme } from "@/app/providers";
 import { usePwaInstall } from "@/hooks/usePwaInstall";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useState } from "react";
 import { toast } from "sonner";
-import { MonitorSmartphone, Moon, Sun, LogOut, HardHat, CheckCircle2 } from "lucide-react";
+import { MonitorSmartphone, Moon, Sun, LogOut, HardHat, CheckCircle2, KeyRound, Loader2 } from "lucide-react";
+import type { FormEvent } from "react";
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
-  const { user, signOut } = useAuth();
+  const { user, signOut, changePassword } = useAuth();
   const { canInstall, promptInstall } = usePwaInstall();
   const [signingOut, setSigningOut] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const handleSignOut = async () => {
     setSigningOut(true);
     await signOut();
     setSigningOut(false);
+  };
+
+  const handleChangePassword = async (e: FormEvent) => {
+    e.preventDefault();
+    setPasswordError("");
+
+    if (newPassword.length < 6) {
+      setPasswordError("La nueva contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Las contraseñas no coinciden");
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setPasswordError("La nueva contraseña debe ser diferente a la actual");
+      return;
+    }
+
+    setChangingPassword(true);
+    const result = await changePassword(currentPassword, newPassword);
+    setChangingPassword(false);
+
+    if (result.error) {
+      setPasswordError(result.error);
+      return;
+    }
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    toast.success("Contraseña actualizada", {
+      description: "La próxima vez que inicies sesión usa tu nueva contraseña.",
+    });
   };
 
   const handleInstall = () => {
@@ -111,6 +152,63 @@ export default function SettingsPage() {
               <p className="text-muted-foreground">Correo</p>
               <p className="font-medium">{user?.email ?? "—"}</p>
             </div>
+
+            <form onSubmit={handleChangePassword} className="space-y-4 rounded-xl border border-border/60 p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <KeyRound className="h-4 w-4 text-primary" />
+                Cambiar contraseña
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="current-password">Contraseña actual</Label>
+                <Input
+                  id="current-password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••"
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">Nueva contraseña</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Mínimo 6 caracteres"
+                    autoComplete="new-password"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirmar nueva contraseña</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Repite la contraseña"
+                    autoComplete="new-password"
+                    required
+                  />
+                </div>
+              </div>
+              {passwordError && (
+                <p className="text-sm text-destructive">{passwordError}</p>
+              )}
+              <Button type="submit" variant="glow" disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}>
+                {changingPassword ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <KeyRound className="h-4 w-4" />
+                )}
+                {changingPassword ? "Actualizando..." : "Actualizar contraseña"}
+              </Button>
+            </form>
+
             <Button variant="destructive" onClick={() => void handleSignOut()} disabled={signingOut}>
               <LogOut className="h-4 w-4" />
               {signingOut ? "Saliendo..." : "Cerrar sesión"}

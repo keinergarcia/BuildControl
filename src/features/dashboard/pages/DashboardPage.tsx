@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { PageTransition, FadeInUp, StaggerContainer } from "@/components/shared/PageTransition";
 import { AnimatedNumber } from "@/components/shared/AnimatedNumber";
@@ -6,10 +7,18 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ProgressBar } from "@/components/shared/ProgressBar";
 import { Button } from "@/components/ui/button";
-import { formatCOPShort, formatCOP, safePercentage } from "@/lib/money";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { formatCOP, safePercentage } from "@/lib/money";
 import { formatDate } from "@/utils/date";
 import { PROJECT_STATUS_LABELS } from "@/types";
 import { useDashboard } from "@/features/dashboard/api/useDashboard";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useProjectCover } from "@/features/projects/api/useProjectCover";
 import type { FinancialAlert } from "@/engine/calculations";
 import {
@@ -65,13 +74,49 @@ const ALERT_STYLES: Record<
 };
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const { projects, projectRows, alerts, activity, totals, isLoading, isError, refetch } =
-    useDashboard();
+    useDashboard({ userId: user?.id });
+
+  const [selectedProjectId, setSelectedProjectId] = useState("");
+
+  const selectedRow = projectRows.find((r) => r.project.id === selectedProjectId) ?? null;
+  const isFiltered = !!selectedRow;
+
+  const display = isFiltered
+    ? {
+        activeProjects: 1,
+        totalReceived: selectedRow.summary.receivedAmount,
+        totalCosts: selectedRow.summary.totalCosts,
+        availableCash: selectedRow.summary.availableCash,
+        totalWithdrawals: selectedRow.summary.totalWithdrawals,
+        totalProfit: selectedRow.summary.profit,
+        budgetUsed: selectedRow.summary.budgetUsed,
+        daysRemaining: selectedRow.summary.daysRemaining,
+        expectedProfit: selectedRow.summary.expectedProfit,
+        projectedProfit: selectedRow.summary.projectedProfit,
+        profitMargin: selectedRow.summary.profitMargin,
+        contractValue: selectedRow.summary.contractValue,
+      }
+    : {
+        activeProjects: totals.activeProjects,
+        totalReceived: totals.totalReceived,
+        totalCosts: totals.totalCosts,
+        availableCash: totals.availableCash,
+        totalWithdrawals: totals.totalWithdrawals,
+        totalProfit: totals.totalProfit,
+        budgetUsed: totals.weightedBudgetUsed,
+        daysRemaining: totals.avgDaysRemaining,
+        expectedProfit: totals.expectedProfit,
+        projectedProfit: totals.projectedProfit,
+        profitMargin: totals.weightedProfitMargin,
+        contractValue: totals.totalContractValue,
+      };
 
   const summaryCards = [
     {
       title: "Proyectos Activos",
-      value: totals.activeProjects,
+      value: display.activeProjects,
       format: (v: number) => v.toString(),
       icon: FolderKanban,
       color: "text-primary",
@@ -79,31 +124,47 @@ export default function DashboardPage() {
     },
     {
       title: "Dinero Recibido",
-      value: totals.totalReceived,
-      format: formatCOPShort,
+      value: display.totalReceived,
+      format: formatCOP,
       icon: CircleDollarSign,
       color: "text-success",
       bgColor: "bg-success/10",
     },
     {
       title: "Costos Totales",
-      value: totals.totalCosts,
-      format: formatCOPShort,
+      value: display.totalCosts,
+      format: formatCOP,
       icon: Wallet,
       color: "text-warning",
       bgColor: "bg-warning/10",
     },
     {
+      title: "Dinero Disponible",
+      value: display.availableCash,
+      format: formatCOP,
+      icon: Wallet,
+      color: "text-success",
+      bgColor: "bg-success/10",
+    },
+    {
+      title: "Retiros",
+      value: display.totalWithdrawals,
+      format: formatCOP,
+      icon: ArrowDownCircle,
+      color: "text-destructive",
+      bgColor: "bg-destructive/10",
+    },
+    {
       title: "Utilidad",
-      value: totals.totalProfit,
-      format: (v: number) => formatCOPShort(v),
+      value: display.totalProfit,
+      format: (v: number) => formatCOP(v),
       icon: TrendingUp,
       color: "text-info",
       bgColor: "bg-info/10",
     },
     {
       title: "Presupuesto Usado",
-      value: totals.weightedBudgetUsed,
+      value: display.budgetUsed,
       format: (v: number) => `${v.toFixed(1)}%`,
       icon: Wallet,
       color: "text-destructive",
@@ -111,7 +172,7 @@ export default function DashboardPage() {
     },
     {
       title: "Días Promedio Rest.",
-      value: totals.avgDaysRemaining,
+      value: display.daysRemaining,
       format: (v: number) => v.toString(),
       icon: Clock,
       color: "text-info",
@@ -119,7 +180,9 @@ export default function DashboardPage() {
     },
   ];
 
-  const chartData = projects.slice(0, 8).map((p) => {
+  const visibleRows = isFiltered ? [selectedRow] : projectRows;
+
+  const chartData = visibleRows.slice(0, 8).map(({ project: p }) => {
     const received = (p.income_payments ?? []).reduce(
       (s, x) => s + Number(x.amount),
       0
@@ -129,6 +192,14 @@ export default function DashboardPage() {
       (p.worker_payments ?? []).reduce((s, x) => s + Number(x.amount), 0);
     return { name: p.name.length > 14 ? `${p.name.slice(0, 14)}…` : p.name, Recibido: received, Costos: costs };
   });
+
+  const visibleAlerts = isFiltered
+    ? alerts.filter((a) => a.project_id === selectedProjectId)
+    : alerts;
+
+  const visibleActivity = isFiltered
+    ? activity.filter((a) => a.project_id === selectedProjectId)
+    : activity;
 
   return (
     <PageTransition>
@@ -140,17 +211,32 @@ export default function DashboardPage() {
               Resumen general de tus obras y finanzas
             </p>
           </div>
-          <Link to="/projects">
-            <Button variant="glow">
-              <Plus className="h-4 w-4" />
-              Nuevo proyecto
-            </Button>
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+              <SelectTrigger className="w-64">
+                <SelectValue placeholder="Todos los proyectos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Todos los proyectos</SelectItem>
+                {projects.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Link to="/projects">
+              <Button variant="glow">
+                <Plus className="h-4 w-4" />
+                Nuevo proyecto
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {isLoading && (
           <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: 8 }).map((_, i) => (
               <Card key={i} className="h-28 animate-pulse bg-secondary/60" />
             ))}
           </div>
@@ -215,17 +301,17 @@ export default function DashboardPage() {
               </div>
             </StaggerContainer>
 
-            {alerts.length > 0 && (
+            {visibleAlerts.length > 0 && (
               <FadeInUp>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 text-warning" />
                     <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-                      Alertas ({alerts.length})
+                      Alertas ({visibleAlerts.length})
                     </h2>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {alerts.map((a) => {
+                    {visibleAlerts.map((a) => {
                       const style = ALERT_STYLES[a.severity];
                       const Icon = style.icon;
                       return (
@@ -265,25 +351,25 @@ export default function DashboardPage() {
                 <div className="rounded-lg border border-border bg-secondary/40 p-3">
                   <p className="text-xs font-medium text-muted-foreground">Utilidad prevista</p>
                   <p className="mt-1 text-lg font-bold tabular-nums">
-                    {formatCOPShort(totals.expectedProfit)}
+                    {formatCOP(display.expectedProfit)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-border bg-secondary/40 p-3">
                   <p className="text-xs font-medium text-muted-foreground">Utilidad proyectada</p>
                   <p className="mt-1 text-lg font-bold tabular-nums text-info">
-                    {formatCOPShort(totals.projectedProfit)}
+                    {formatCOP(display.projectedProfit)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-border bg-secondary/40 p-3">
                   <p className="text-xs font-medium text-muted-foreground">Utilidad real</p>
                   <p className="mt-1 text-lg font-bold tabular-nums text-success">
-                    {formatCOPShort(totals.totalProfit)}
+                    {formatCOP(display.totalProfit)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-border bg-secondary/40 p-3">
                   <p className="text-xs font-medium text-muted-foreground">Margen</p>
                   <p className="mt-1 text-lg font-bold tabular-nums">
-                    {totals.weightedProfitMargin.toFixed(1)}%
+                    {display.profitMargin.toFixed(1)}%
                   </p>
                 </div>
               </CardContent>
@@ -299,13 +385,20 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   {chartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                    <ResponsiveContainer width="100%" height={320}>
+                      <BarChart data={chartData} margin={{ top: 24, right: 8, left: 8, bottom: 8 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--bc-border)" vertical={false} />
                         <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="var(--bc-text-muted)" />
-                        <YAxis tick={{ fontSize: 11 }} stroke="var(--bc-text-muted)" tickFormatter={(v: number) => formatCOPShort(v)} />
+                        <YAxis
+                          width={110}
+                          tick={{ fontSize: 11 }}
+                          stroke="var(--bc-text-muted)"
+                          tickFormatter={(v: number) => formatCOP(v)}
+                        />
                         <Tooltip
-                          formatter={(value) => formatCOP(Number(value ?? 0))}
+                          cursor={{ fill: "var(--bc-muted)" }}
+                          formatter={(value, name) => [formatCOP(Number(value ?? 0)), name]}
+                          labelStyle={{ fontWeight: 600 }}
                           contentStyle={{
                             background: "var(--bc-bg-card)",
                             border: "1px solid var(--bc-border)",
@@ -313,9 +406,31 @@ export default function DashboardPage() {
                             fontSize: 12,
                           }}
                         />
-                        <Legend />
-                        <Bar dataKey="Recibido" fill="var(--bc-accent-success)" radius={[6, 6, 0, 0]} />
-                        <Bar dataKey="Costos" fill="var(--bc-accent-primary)" radius={[6, 6, 0, 0]} />
+                        <Legend formatter={(value: string) => <span className="text-xs font-medium">{value}</span>} />
+<Bar
+                            dataKey="Recibido"
+                            fill="var(--bc-accent-success)"
+                            radius={[6, 6, 0, 0]}
+                            maxBarSize={48}
+                            label={{
+                              position: "top",
+                              fontSize: 11,
+                              fill: "var(--bc-text-muted)",
+                              formatter: (v: unknown) => formatCOP(Number(v ?? 0)),
+                            }}
+                          />
+                          <Bar
+                            dataKey="Costos"
+                            fill="var(--bc-accent-primary)"
+                            radius={[6, 6, 0, 0]}
+                            maxBarSize={48}
+                            label={{
+                              position: "top",
+                              fontSize: 11,
+                              fill: "var(--bc-text-muted)",
+                              formatter: (v: unknown) => formatCOP(Number(v ?? 0)),
+                            }}
+                          />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -331,12 +446,12 @@ export default function DashboardPage() {
                   <CardTitle className="text-base">Actividad Reciente</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-1">
-                  {activity.length === 0 ? (
+                  {visibleActivity.length === 0 ? (
                     <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-                      Sin actividad reciente
+                      {isFiltered ? "Sin actividad en este proyecto" : "Sin actividad reciente"}
                     </div>
                   ) : (
-                    activity.map((item, i) => (
+                    visibleActivity.map((item, i) => (
                       <div
                         key={`${item.kind}-${item.key}-${i}`}
                         className="flex items-center gap-3 rounded-lg p-2 hover:bg-secondary/60 transition-colors"
@@ -361,7 +476,7 @@ export default function DashboardPage() {
                             item.kind === "income" ? "text-success" : "text-foreground"
                           }`}
                         >
-                          {formatCOPShort(item.amount ?? 0)}
+                          {formatCOP(item.amount ?? 0)}
                         </span>
                       </div>
                     ))
@@ -386,7 +501,7 @@ export default function DashboardPage() {
                 </Link>
               </CardHeader>
               <CardContent className="space-y-3">
-                {projectRows.slice(0, 5).map(({ project: p, summary }) => {
+                {visibleRows.slice(0, 5).map(({ project: p, summary }) => {
                   const budget = (p.budgets ?? []).reduce(
                     (s, x) => s + Number(x.budgeted_amount),
                     0
@@ -416,7 +531,7 @@ export default function DashboardPage() {
                             </div>
                             <p className="mt-0.5 text-xs text-muted-foreground">
                               {p.client?.name ?? "Sin cliente"} ·{" "}
-                              {formatCOPShort(costs)} / {formatCOPShort(budget)}
+                              {formatCOP(costs)} / {formatCOP(budget)}
                             </p>
                           </div>
                         </div>
@@ -463,7 +578,7 @@ export default function DashboardPage() {
                 Valor total contratado
               </span>
               <span className="font-semibold tabular-nums">
-                {formatCOP(totals.totalContractValue)}
+                {formatCOP(display.contractValue)}
               </span>
             </div>
           </>

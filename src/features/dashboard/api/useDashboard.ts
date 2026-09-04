@@ -51,8 +51,11 @@ export interface ProjectRow {
   summary: FinancialSummary;
 }
 
-export function useDashboard(options: { withActivity?: boolean } = {}) {
+export function useDashboard(
+  options: { withActivity?: boolean; userId?: string | undefined } = {}
+) {
   const withActivity = options.withActivity ?? true;
+  const userId = options.userId;
   const projectsQuery = useQuery<ProjectWithDetails[]>({
     queryKey: ["dashboard", "projects"],
     queryFn: fetchDashboardData,
@@ -64,8 +67,8 @@ export function useDashboard(options: { withActivity?: boolean } = {}) {
   );
 
   const activityQuery = useQuery({
-    queryKey: ["dashboard", "activity", projectIds],
-    queryFn: () => fetchRecentActivity(projectIds),
+    queryKey: ["dashboard", "activity", projectIds, userId],
+    queryFn: () => fetchRecentActivity(projectIds, userId),
     enabled: withActivity && projectIds.length > 0,
   });
 
@@ -109,7 +112,7 @@ export function useDashboard(options: { withActivity?: boolean } = {}) {
     const totalExpenses = summaries.reduce((s, x) => s + x.totalExpenses, 0);
     const totalLabor = summaries.reduce((s, x) => s + x.laborCost, 0);
     const totalWithdrawals = summaries.reduce((s, x) => s + x.totalWithdrawals, 0);
-    const totalBudget = summaries.reduce((s, x) => s + x.remainingBudget + x.totalCosts, 0);
+    const totalBudget = summaries.reduce((s, x) => s + x.totalBudget, 0);
     const totalProfit = summaries.reduce((s, x) => s + x.profit, 0);
     const expectedProfit = summaries.reduce((s, x) => s + x.expectedProfit, 0);
     const projectedProfit = summaries.reduce((s, x) => s + x.projectedProfit, 0);

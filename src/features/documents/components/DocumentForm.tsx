@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { DOCUMENT_TYPE_LABELS, type Project } from "@/types";
 import type { DocumentType } from "@/types/enums";
+import { MAX_FILE_SIZE_MB } from "@/features/documents/api/documents";
 import { UploadCloud, X } from "lucide-react";
 
 const documentFormSchema = z.object({
@@ -62,6 +63,7 @@ export function DocumentForm({
   onSave,
 }: DocumentFormProps) {
   const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   const {
     register,
@@ -76,13 +78,24 @@ export function DocumentForm({
     defaultValues: toFormValue(fixedProjectId),
   });
 
+  // oxlint-disable react/set-state-in-effect -- Sincroniza el formulario
+  // (react-hook-form + archivo) con la apertura del diálogo y el proyecto fijado;
+  // es el patrón oficial de RHF para sincronizar props externas.
   useEffect(() => {
     reset(toFormValue(fixedProjectId));
     setFile(null);
+    setFileError(null);
   }, [open, fixedProjectId, reset]);
+  // oxlint-enable react/set-state-in-effect
 
   const handleFile = (f: File | undefined) => {
     if (!f) return;
+    if (f.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      setFile(null);
+      setFileError(`El archivo supera el límite de ${MAX_FILE_SIZE_MB} MB`);
+      return;
+    }
+    setFileError(null);
     setFile(f);
     if (!getValues("name")) {
       setValue("name", f.name.replace(/\.[^.]+$/, ""));
@@ -121,7 +134,7 @@ export function DocumentForm({
                 <>
                   <span className="text-sm font-medium">Selecciona un archivo</span>
                   <span className="text-xs text-muted-foreground">
-                    PDF, imagen u otros (máx. 10 MB)
+                    PDF, imagen u otros (máx. {MAX_FILE_SIZE_MB} MB)
                   </span>
                 </>
               )}
@@ -132,6 +145,9 @@ export function DocumentForm({
                 onChange={(e) => handleFile(e.target.files?.[0])}
               />
             </label>
+            {fileError && (
+              <p className="text-sm text-destructive">{fileError}</p>
+            )}
             {file && (
               <Button
                 type="button"
@@ -212,7 +228,7 @@ export function DocumentForm({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" variant="glow" disabled={isSubmitting || !file}>
+            <Button type="submit" variant="glow" disabled={isSubmitting || !file || !!fileError}>
               {isSubmitting ? "Subiendo..." : "Subir"}
             </Button>
           </DialogFooter>

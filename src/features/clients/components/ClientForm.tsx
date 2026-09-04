@@ -45,7 +45,7 @@ function toFormValue(client: Client | null): ClientFormData {
   };
 }
 
-export function buildClientInput(data: ClientFormData) {
+function buildClientInput(data: ClientFormData) {
   return {
     name: data.name,
     company: toNull(data.company),

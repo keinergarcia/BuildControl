@@ -28,6 +28,8 @@ export function useSaveProjectBudgets() {
       queryClient.invalidateQueries({
         queryKey: ["projects", "detail", variables.projectId],
       });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 }

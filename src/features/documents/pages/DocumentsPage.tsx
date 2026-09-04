@@ -86,6 +86,10 @@ export default function DocumentsPage() {
       anchor.target = "_blank";
       anchor.rel = "noopener noreferrer";
       anchor.click();
+    } catch {
+      toast.error("No se pudo abrir el documento", {
+        description: "El archivo no está disponible en el almacenamiento.",
+      });
     } finally {
       setDownloadingId(null);
     }

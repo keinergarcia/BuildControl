@@ -46,16 +46,19 @@ function toItem(
 export async function queryTable(
   table: "expenses" | "worker_payments" | "income_payments" | "personal_withdrawals",
   projectIds: string[],
+  userId: string | undefined,
   limit: number,
   cols: { id: string; project_id: string; description: string; amount: string; date: string; created_at: string },
   kind: ActivityKind
 ) {
-  const { data, error } = await supabase
+  let query = supabase
     .from(table)
     .select(cols.id + ", project_id, " + cols.description + ", " + cols.amount + ", " + cols.date + ", created_at")
     .in("project_id", projectIds)
     .order("created_at", { ascending: false })
     .limit(limit);
+  if (userId) query = query.eq("user_id", userId);
+  const { data, error } = await query;
   if (error) throw error;
   return ((data ?? []) as unknown as Array<Record<string, unknown>>).map((r) =>
     toItem(
@@ -72,29 +75,33 @@ export async function queryTable(
 
 export async function fetchActivity(
   projectIds: string[],
+  userId: string | undefined,
   limit = 300
 ): Promise<ActivityItem[]> {
   if (projectIds.length === 0) return [];
 
+  let auditQuery = supabase
+    .from("audit_logs")
+    .select("id, action, entity, entity_id, created_at")
+    .in("entity", ["expenses", "worker_payments", "income_payments", "personal_withdrawals", "projects", "documents", "contracts"])
+    .in("action", ["INSERT", "UPDATE", "DELETE"])
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (userId) auditQuery = auditQuery.eq("user_id", userId);
+
   const [expenses, payments, income, withdrawals, audit] = await Promise.all([
-    queryTable("expenses", projectIds, limit, { id: "id", project_id: "project_id", description: "description", amount: "amount", date: "expense_date", created_at: "created_at" }, "expense"),
-    queryTable("worker_payments", projectIds, limit, { id: "id", project_id: "project_id", description: "concept", amount: "amount", date: "payment_date", created_at: "created_at" }, "worker_payment"),
-    queryTable("income_payments", projectIds, limit, { id: "id", project_id: "project_id", description: "concept", amount: "amount", date: "payment_date", created_at: "created_at" }, "income"),
-    queryTable("personal_withdrawals", projectIds, limit, { id: "id", project_id: "project_id", description: "reason", amount: "amount", date: "withdrawal_date", created_at: "created_at" }, "withdrawal"),
-    supabase
-      .from("audit_logs")
-      .select("id, action, entity, entity_id, created_at")
-      .in("entity", ["expenses", "worker_payments", "income_payments", "personal_withdrawals", "projects", "documents", "contracts"])
-      .in("action", ["UPDATE", "DELETE"])
-      .order("created_at", { ascending: false })
-      .limit(100),
+    queryTable("expenses", projectIds, userId, limit, { id: "id", project_id: "project_id", description: "description", amount: "amount", date: "expense_date", created_at: "created_at" }, "expense"),
+    queryTable("worker_payments", projectIds, userId, limit, { id: "id", project_id: "project_id", description: "concept", amount: "amount", date: "payment_date", created_at: "created_at" }, "worker_payment"),
+    queryTable("income_payments", projectIds, userId, limit, { id: "id", project_id: "project_id", description: "concept", amount: "amount", date: "payment_date", created_at: "created_at" }, "income"),
+    queryTable("personal_withdrawals", projectIds, userId, limit, { id: "id", project_id: "project_id", description: "reason", amount: "amount", date: "withdrawal_date", created_at: "created_at" }, "withdrawal"),
+    auditQuery,
   ]);
 
   if (audit.error) throw audit.error;
 
   const auditItems: ActivityItem[] = (audit.data ?? []).map((a) => {
     const label = (AUDIT_ENTITY_LABELS[a.entity] ?? a.entity).toLowerCase();
-    const verb = a.action === "DELETE" ? "eliminó" : "modificó";
+    const verb = a.action === "DELETE" ? "eliminó" : a.action === "INSERT" ? "creó" : "modificó";
     const project_id = a.entity === "projects" ? a.entity_id : null;
     return toItem(
       "audit",

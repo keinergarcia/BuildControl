@@ -13,14 +13,12 @@ import {
   calculateDailyCost,
   calculateScheduleVariance,
   calculatePotentialTimeSavings,
-  calculateBudgetUsed,
-  calculateActualProfit,
   calculateProjectedCost,
   calculateDailyLaborCost,
   calculateDailyMaterialCost,
   calculateDailyOtherCost,
 } from "../calculations";
-import type { Contract, Expense, WorkerPayment, IncomePayment, PersonalWithdrawal, ProjectBudget } from "@/types";
+import type { Contract, Expense, WorkerPayment, IncomePayment, PersonalWithdrawal } from "@/types";
 
 function makeContract(overrides: Partial<Contract> = {}): Contract {
   return {
@@ -267,28 +265,6 @@ describe("Potential Time Savings", () => {
 
   it("returns 0 when not ahead", () => {
     expect(calculatePotentialTimeSavings(450000, -5)).toBe(0);
-  });
-});
-
-describe("Budget Used", () => {
-  it("calculates budget utilization", () => {
-    const budgets: ProjectBudget[] = [
-      { id: "1", project_id: "p1", category_id: "cat1", user_id: "u1", budgeted_amount: 50000000, created_at: "", updated_at: "" },
-      { id: "2", project_id: "p1", category_id: "cat2", user_id: "u1", budgeted_amount: 70000000, created_at: "", updated_at: "" },
-    ];
-    expect(calculateBudgetUsed(budgets, 60000000)).toBe(50);
-  });
-
-  it("returns 0 when no budget", () => {
-    expect(calculateBudgetUsed([], 1000)).toBe(0);
-  });
-});
-
-describe("Actual Profit", () => {
-  it("devuelve contrato menos costos reales", () => {
-    expect(calculateActualProfit(180000000, 120000000)).toBe(60000000);
-    expect(calculateActualProfit(100000, 150000)).toBe(-50000);
-    expect(calculateActualProfit(0, 0)).toBe(0);
   });
 });
 

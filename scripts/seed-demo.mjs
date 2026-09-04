@@ -20,7 +20,7 @@
  * (0000...-0001 etc.) si se pasa --reset. No desactiva RLS ni toca FKs.
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -58,14 +58,21 @@ async function query(sql) {
   }
 }
 
+// Escapa comillas simples duplicándolas (defensa básica anti-inyección SQL
+// para valores interpolados en consultas).
+function escapeSql(value) {
+  return String(value).replace(/'/g, "''");
+}
+
 // Envuelve un bloque SQL con el contexto JWT de UN usuario real (su sub) para que
 // el trigger de auditoría (audit_trigger) registre al actor correcto. Sin esto,
 // los INSERT/UPDATE/DELETE de las tablas financieras (y sus borrados en cascada)
 // escribirían audit_logs con actor NULL y violarían audit_logs.user_id NOT NULL.
 function wrapUser(sql, user) {
+  const email = escapeSql(user.email);
   return [
     "BEGIN;",
-    `SET LOCAL request.jwt.claims = '{"sub":"${user.id}","role":"authenticated","email":"${user.email}"}';`,
+    `SET LOCAL request.jwt.claims = '{"sub":"${user.id}","role":"authenticated","email":"${email}"}';`,
     sql,
     "COMMIT;",
   ].join("\n");
@@ -84,9 +91,10 @@ async function main() {
     process.exit(1);
   }
 
-  // 1) Buscar el usuario real por email
+  // 1) Buscar el usuario real por email (email escapado contra inyección SQL)
+  const safeEmail = escapeSql(email);
   const rows = await query(
-    `SELECT id, email FROM auth.users WHERE email = '${email}' LIMIT 1;`
+    `SELECT id, email FROM auth.users WHERE email = '${safeEmail}' LIMIT 1;`
   );
   const user = Array.isArray(rows) ? rows[0] : undefined;
   if (!user) {

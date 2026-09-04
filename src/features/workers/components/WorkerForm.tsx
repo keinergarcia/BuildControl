@@ -6,6 +6,7 @@ import { workerSchema, type WorkerFormData } from "@/utils/validators";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MoneyInput } from "@/components/shared/MoneyInput";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -52,7 +53,7 @@ function toFormValue(worker: Worker | null): WorkerFormData {
   };
 }
 
-export function buildWorkerInput(data: WorkerFormData, status?: WorkerStatus): WorkerInput {
+function buildWorkerInput(data: WorkerFormData, status?: WorkerStatus): WorkerInput {
   return {
     name: data.name,
     phone: toNull(data.phone),
@@ -166,13 +167,17 @@ export function WorkerForm({
             </div>
             <div className="space-y-2">
               <Label htmlFor="daily_rate">Valor diario / tarifa</Label>
-              <Input
-                id="daily_rate"
-                type="number"
-                inputMode="numeric"
-                min={0}
-                {...register("daily_rate", { valueAsNumber: true })}
-                placeholder="Ej. 80000"
+              <Controller
+                control={control}
+                name="daily_rate"
+                render={({ field }) => (
+                  <MoneyInput
+                    id="daily_rate"
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Ej. 80000"
+                  />
+                )}
               />
             </div>
           </div>

@@ -1,11 +1,10 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatDate } from "@/utils/date";
-import { PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS } from "@/types";
+import { PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS, type ProjectWithDetails } from "@/types";
 import { MapPin, CalendarDays, Building2, ArrowRight, FolderKanban } from "lucide-react";
 import { useProjectCover } from "@/features/projects/api/useProjectCover";
-import type { ProjectWithDetails } from "@/types";
+import { ProjectStatusSelect } from "@/features/projects/components/ProjectStatusSelect";
 
 interface ProjectCardProps {
   project: ProjectWithDetails;
@@ -29,7 +28,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
             <div className="absolute right-3 top-3">
-              <StatusBadge status={project.status} label={statusLabel} />
+              <ProjectStatusSelect projectId={project.id} status={project.status} />
             </div>
           </div>
         ) : (
@@ -51,7 +50,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
                   )}
                 </div>
               </div>
-              <StatusBadge status={project.status} label={statusLabel} />
+              <ProjectStatusSelect projectId={project.id} status={project.status} />
             </div>
 
             {(project.client || project.project_type) && (

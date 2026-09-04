@@ -7,6 +7,7 @@ import { withdrawalSchema } from "@/utils/validators";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MoneyInput } from "@/components/shared/MoneyInput";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -60,7 +61,7 @@ function toFormValue(
   };
 }
 
-export function buildWithdrawalInput(data: WithdrawalFormData): WithdrawalInput {
+function buildWithdrawalInput(data: WithdrawalFormData): WithdrawalInput {
   return {
     project_id: data.project_id,
     amount: data.amount,
@@ -154,13 +155,17 @@ export function WithdrawalForm({
 
           <div className="space-y-2">
             <Label htmlFor="amount">Valor *</Label>
-            <Input
-              id="amount"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              {...register("amount", { valueAsNumber: true })}
-              aria-invalid={!!errors.amount}
+            <Controller
+              control={control}
+              name="amount"
+              render={({ field }) => (
+                <MoneyInput
+                  id="amount"
+                  value={field.value}
+                  onChange={field.onChange}
+                  ariaInvalid={!!errors.amount}
+                />
+              )}
             />
             {errors.amount && (
               <p className="text-sm text-destructive">{errors.amount.message}</p>

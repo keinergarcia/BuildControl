@@ -29,6 +29,7 @@ export function useCreateClient() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: clientKeys.all });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-project-count"] });
     },
   });
 }
@@ -41,6 +42,8 @@ export function useUpdateClient() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: clientKeys.all });
       queryClient.invalidateQueries({ queryKey: clientKeys.detail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-project-count"] });
     },
   });
 }
@@ -52,6 +55,7 @@ export function useDeleteClient() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: clientKeys.all });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-project-count"] });
     },
   });
 }

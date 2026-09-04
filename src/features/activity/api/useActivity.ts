@@ -6,10 +6,10 @@ export const activityKeys = {
   list: (projectIds: string[]) => [...activityKeys.all, projectIds] as const,
 };
 
-export function useActivity(projectIds: string[]) {
+export function useActivity(projectIds: string[], userId?: string | undefined) {
   return useQuery<ActivityItem[]>({
     queryKey: activityKeys.list(projectIds),
-    queryFn: () => fetchActivity(projectIds),
+    queryFn: () => fetchActivity(projectIds, userId),
     enabled: projectIds.length > 0,
   });
 }
