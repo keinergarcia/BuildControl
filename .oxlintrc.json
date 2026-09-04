@@ -4,6 +4,8 @@
   "ignorePatterns": ["e2e/**", "playwright.config.ts"],
   "rules": {
     "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+    "react/only-export-components": ["warn", { "allowConstantExport": true }],
+    "react/set-state-in-effect": "warn",
+    "react/incompatible-library": "off"
   }
 }
