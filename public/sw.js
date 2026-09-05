@@ -1,10 +1,11 @@
-const VERSION = "bc-v2";
+const VERSION = "bc-v3";
+const SCOPE = "/BuildControl/";
 const PRECACHE = [
-  "/",
-  "/manifest.webmanifest",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png",
-  "/icons/maskable-512.png",
+  SCOPE,
+  `${SCOPE}manifest.webmanifest`,
+  `${SCOPE}icons/icon-192.png`,
+  `${SCOPE}icons/icon-512.png`,
+  `${SCOPE}icons/maskable-512.png`,
 ];
 
 self.addEventListener("install", (event) => {
@@ -32,7 +33,7 @@ async function networkFirst(request) {
   } catch {
     const cached = await caches.match(request, { ignoreSearch: true });
     if (cached) return cached;
-    const shell = await caches.match("/", { ignoreSearch: true });
+    const shell = await caches.match(SCOPE, { ignoreSearch: true });
     if (shell) return shell;
     return new Response("Sin conexión y sin caché local.", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } });
   }

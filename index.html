@@ -2,9 +2,9 @@
 <html lang="es" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="%BASE_URL%icons/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="BuildControl — Plataforma inteligente para gestionar, controlar y rentabilizar obras de construcción." />
     <meta name="theme-color" content="#0a0e17" />
@@ -19,6 +19,18 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // GitHub Pages sirve 404.html para rutas desconocidas. 404.html guarda la
+      // ruta original en sessionStorage y redirige aquí; este script la restaura
+      // para que el enrutador (con basename) la interprete correctamente.
+      (function () {
+        var redirect = sessionStorage.getItem("bc.redirect");
+        if (redirect) {
+          sessionStorage.removeItem("bc.redirect");
+          history.replaceState(null, "", redirect);
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

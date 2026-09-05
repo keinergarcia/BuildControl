@@ -24,7 +24,7 @@ const RouteErrorFallback = () => (
       Ocurrió un error inesperado al cargar esta vista.
     </p>
     <a
-      href="/"
+      href={import.meta.env.BASE_URL}
       className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
     >
       Volver al inicio
@@ -65,59 +65,64 @@ const AssistantPage = lazy(() => import("@/features/assistant/pages/AssistantPag
 const ActivityPage = lazy(() => import("@/features/activity/pages/ActivityPage"));
 const SettingsPage = lazy(() => import("@/features/settings/pages/SettingsPage"));
 
-export const router = createBrowserRouter([
+export const router = createBrowserRouter(
+  [
+    {
+      path: "/landing",
+      element: (
+        <Suspense fallback={<RouteFallback />}>
+          <LandingPage />
+        </Suspense>
+      ),
+      errorElement: <RouteErrorFallback />,
+    },
+    {
+      path: "/login",
+      element: (
+        <Suspense fallback={<RouteFallback />}>
+          <LoginPage />
+        </Suspense>
+      ),
+      errorElement: <RouteErrorFallback />,
+    },
+    {
+      path: "/reset-password",
+      element: (
+        <Suspense fallback={<RouteFallback />}>
+          <ResetPasswordPage />
+        </Suspense>
+      ),
+      errorElement: <RouteErrorFallback />,
+    },
+    {
+      path: "/",
+      element: <Layout />,
+      errorElement: <RouteErrorFallback />,
+      children: [
+        { index: true, element: <Page element={<DashboardPage />} /> },
+        { path: "projects", element: <Page element={<ProjectsPage />} /> },
+        { path: "projects/:id", element: <Page element={<ProjectDetailPage />} /> },
+        { path: "clients", element: <Page element={<ClientsPage />} /> },
+        { path: "contracts", element: <Page element={<ContractsPage />} /> },
+        { path: "budgets", element: <Page element={<BudgetsPage />} /> },
+        { path: "expenses", element: <Page element={<ExpensesPage />} /> },
+        { path: "workers", element: <Page element={<WorkersPage />} /> },
+        { path: "worker-payments", element: <Page element={<WorkerPaymentsPage />} /> },
+        { path: "income", element: <Page element={<IncomePage />} /> },
+        { path: "withdrawals", element: <Page element={<WithdrawalsPage />} /> },
+        { path: "suppliers", element: <Page element={<SuppliersPage />} /> },
+        { path: "documents", element: <Page element={<DocumentsPage />} /> },
+        { path: "reports", element: <Page element={<ReportsPage />} /> },
+        { path: "assistant", element: <Page element={<AssistantPage />} /> },
+        { path: "historial", element: <Page element={<ActivityPage />} /> },
+        { path: "settings", element: <Page element={<SettingsPage />} /> },
+      ],
+    },
+  ],
   {
-    path: "/landing",
-    element: (
-      <Suspense fallback={<RouteFallback />}>
-        <LandingPage />
-      </Suspense>
-    ),
-    errorElement: <RouteErrorFallback />,
-  },
-  {
-    path: "/login",
-    element: (
-      <Suspense fallback={<RouteFallback />}>
-        <LoginPage />
-      </Suspense>
-    ),
-    errorElement: <RouteErrorFallback />,
-  },
-  {
-    path: "/reset-password",
-    element: (
-      <Suspense fallback={<RouteFallback />}>
-        <ResetPasswordPage />
-      </Suspense>
-    ),
-    errorElement: <RouteErrorFallback />,
-  },
-  {
-    path: "/",
-    element: <Layout />,
-    errorElement: <RouteErrorFallback />,
-    children: [
-      { index: true, element: <Page element={<DashboardPage />} /> },
-      { path: "projects", element: <Page element={<ProjectsPage />} /> },
-      { path: "projects/:id", element: <Page element={<ProjectDetailPage />} /> },
-      { path: "clients", element: <Page element={<ClientsPage />} /> },
-      { path: "contracts", element: <Page element={<ContractsPage />} /> },
-      { path: "budgets", element: <Page element={<BudgetsPage />} /> },
-      { path: "expenses", element: <Page element={<ExpensesPage />} /> },
-      { path: "workers", element: <Page element={<WorkersPage />} /> },
-      { path: "worker-payments", element: <Page element={<WorkerPaymentsPage />} /> },
-      { path: "income", element: <Page element={<IncomePage />} /> },
-      { path: "withdrawals", element: <Page element={<WithdrawalsPage />} /> },
-      { path: "suppliers", element: <Page element={<SuppliersPage />} /> },
-      { path: "documents", element: <Page element={<DocumentsPage />} /> },
-      { path: "reports", element: <Page element={<ReportsPage />} /> },
-      { path: "assistant", element: <Page element={<AssistantPage />} /> },
-      { path: "historial", element: <Page element={<ActivityPage />} /> },
-      { path: "settings", element: <Page element={<SettingsPage />} /> },
-    ],
-  },
-]);
+    basename: import.meta.env.BASE_URL.replace(/\/$/, ""),
+  }
+);
 
 function Page({ element }: { element: React.ReactNode }) {
   return (

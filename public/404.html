@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>BuildControl</title>
+    <script>
+      // SPA fallback para GitHub Pages: las rutas profundas (p. ej. /projects/1)
+      // no existen como archivos y GitHub Pages devuelve este 404. Guardamos la
+      // ruta original y redirigimos a index.html para restaurarla.
+      (function () {
+        sessionStorage.setItem(
+          "bc.redirect",
+          window.location.pathname + window.location.search + window.location.hash
+        );
+        window.location.replace("/BuildControl/");
+      })();
+    </script>
+  </head>
+  <body>
+    Redirigiendo a BuildControl...
+  </body>
+</html>
